@@ -28,6 +28,9 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import jakarta.xml.bind.annotation.XmlElement;
+import jakarta.persistence.Column;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotEmpty;
 
 import org.springframework.beans.support.MutableSortDefinition;
 import org.springframework.beans.support.PropertyComparator;
@@ -48,6 +51,19 @@ public class Vet extends Person {
     @JoinTable(name = "vet_specialties", joinColumns = @JoinColumn(name = "vet_id"),
         inverseJoinColumns = @JoinColumn(name = "specialty_id"))
     private Set<Specialty> specialties;
+
+    @Column(name = "professional_number")
+    @NotEmpty
+    @Digits(fraction = 0, integer = 10)
+    private String professionalNumber;
+
+    public String getProfessionalNumber() {
+        return this.professionalNumber;
+    }
+
+    public void setProfessionalNumber(String newNumber) {
+        this.professionalNumber = newNumber;
+    }
 
     protected Set<Specialty> getSpecialtiesInternal() {
         if (this.specialties == null) {
