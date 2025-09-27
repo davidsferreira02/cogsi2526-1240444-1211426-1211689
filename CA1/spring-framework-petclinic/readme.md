@@ -179,6 +179,6 @@ Dado que estamos a trabalhar com um repositório remoto é necessário correr o 
 
 Para verificar as mudanças é necessário correr o comando **./mvnw -DskipTests jetty:run-war** e, de seguida, aceder à pagina *web* e verificar se na aba dos veterinários as mudanças são visíveis.
 
-![Validação da implementação](/CA1\spring-framework-petclinic\Images_MarkDown_File\Issue2ValidacaoImplementacao.png "Issue 2")
+![Validação da implementação](/CA1\spring-framework-petclinic\img\licenseNumberFeature\Issue2ValidacaoImplementacao.png "Issue 2")
 
 Como podemos ver, o campo foi adicionado com sucesso à tabela dos veterinários.
