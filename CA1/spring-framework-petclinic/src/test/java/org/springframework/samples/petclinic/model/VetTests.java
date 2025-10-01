@@ -97,11 +97,48 @@ class VetTests {
         vet.setFirstName("John");
         vet.setLastName("Doe");
         vet.setProfessionalNumber("1234567890");
+        vet.setEmail("john.doe@example.com");
         return vet;
     }
 
     
     private Validator createValidator() {
         return localValidatorFactoryBean.getValidator();
+    }
+
+    @Test
+    void shouldValidateWhenEmailIsValid() {
+        Vet vet = createValidVet();
+        vet.setEmail("john.doe@example.com");
+        Validator validator = createValidator();
+        Set<ConstraintViolation<Vet>> violations = validator.validate(vet);
+        assertThat(violations).isEmpty();
+    }
+
+    @Test
+    void shouldNotValidateWhenEmailIsEmpty() {
+        Vet vet = createValidVet();
+        vet.setEmail("");
+        Validator validator = createValidator();
+        Set<ConstraintViolation<Vet>> violations = validator.validate(vet);
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("email") && v.getMessage().equals("must not be empty"));
+    }
+
+    @Test
+    void shouldNotValidateWhenEmailIsNull() {
+        Vet vet = createValidVet();
+        vet.setEmail(null);
+        Validator validator = createValidator();
+        Set<ConstraintViolation<Vet>> violations = validator.validate(vet);
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("email") && v.getMessage().equals("must not be empty"));
+    }
+
+    @Test
+    void shouldNotValidateWhenEmailIsInvalid() {
+        Vet vet = createValidVet();
+        vet.setEmail("invalid-email");
+        Validator validator = createValidator();
+        Set<ConstraintViolation<Vet>> violations = validator.validate(vet);
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("email") && v.getMessage().contains("must be a well-formed email address"));
     }
 }
