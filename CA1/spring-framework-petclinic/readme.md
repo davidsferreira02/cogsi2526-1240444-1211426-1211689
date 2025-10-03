@@ -258,7 +258,26 @@ Em suma, aquando da escrita desta secção do *Technical Report*, existem 3 cont
 
 Para ser possível verificar-se *merge conflicts* no repositório e prontamente corrigi-los foi necessário criar-se este tipo de conflitos de forma controlado.
 
-### 1º Passo - Realizar um *commit* num dos *branches*
+### 1º Passo - Realizar um *commit* no novo *branch*
+
+Para a realização deste passo, foi criado um *branch* temporário, seguindo o processo já documentado neste documento, apenas com a intenção da criar *merge conflicts*. Foi, então, adicionada a seguinte linha no ficheiro *readme.md*.
+
+        # TEXTO DE TESTE PARA ISSUE DE MERGE CONFLICT.
+
+De seguida, foi feito o *commit* desta alteração para o *branch* criado, como mostra o seguinte *output*:
+
+        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ git log
+        commit aea38a6c5a74c3a99fc273e46e4303ea0626d21f (HEAD -> conflict_issue, origin/conflict_issue)
+        Author: NunoCunha43 <1211689@isep.ipp.pt>
+        Date:   Fri Oct 3 17:08:05 2025 +0000
+
+            #12 - criacao de conflito
+
+Para confirmar que o realmente este *branch* se encontra com mais commits que o *main* podemos recorrer ao comando ***git status***:
+
+
+
+### 2º Passo - Realizar um *commit* conflituoso no *branch main*
 
 Neste caso, um dos *branches* utilizado foi o *main*, como podemos ver no seguinte *output*:
 
@@ -294,6 +313,7 @@ Posto isto, foram feitas alterações ao ficheiro *readme.md* e enviadas para o 
            0604d8b..5fb2fb6  main -> main
         nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1/spring-framework-petclinic$ 
 
+De seguida,
 
 ## Issue 12 - Aditional Technologies
 
