@@ -294,6 +294,9 @@ Posto isto, foram feitas alterações ao ficheiro *readme.md* e enviadas para o 
            0604d8b..5fb2fb6  main -> main
         nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1/spring-framework-petclinic$ 
 
+De seguida, foi necessário alterar-se o *branch* atual e fazer-se algumas alterações no mesmo ficheiro.
+
+# TEXTO DE TESTE PARA ISSUE DE MERGE CONFLICT.
 
 ## Issue 12 - Aditional Technologies
 
