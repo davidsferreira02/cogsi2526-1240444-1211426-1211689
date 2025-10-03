@@ -179,6 +179,77 @@ Dado que estamos a trabalhar com um repositório remoto é necessário correr o 
 
 Para verificar as mudanças é necessário correr o comando **./mvnw -DskipTests jetty:run-war** e, de seguida, aceder à pagina *web* e verificar se na aba dos veterinários as mudanças são visíveis.
 
-![Validação da implementação](/CA1\spring-framework-petclinic\img\licenseNumberFeature\Issue2ValidacaoImplementacao.png "Issue 2")
+![Validação da implementação](/CA1/spring-framework-petclinic/img/licenseNumberFeature/Issue2ValidacaoImplementacao.png "Issue 2")
 
 Como podemos ver, o campo foi adicionado com sucesso à tabela dos veterinários.
+
+## Issue 7 - Count distinct contributors in the repository 
+
+É possível observar-se os diferentes contribuintes do projeto através da utilização dos comandos ***git log*** e ***git shortlog***. De forma a informação ser moldada às possíveis necessidades pode-se utilizar as *flags* associadas.
+
+De forma a perceber apenas os diferentes contribuintes e o número de *commits* de cada um o comando mais indicado é o ***git shortlog***, pois oferece um *output* mais resumido e de mais fácil leitura.
+        
+        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ git shortlog
+        David Ferreira (3):
+              Testing the new feature #3
+              Remove .vscode dir
+              Git log command #4
+
+        NunoCunha43 (2):
+              Issue 2: Implementação feita e dados de teste adicionados
+              Issue 2: readme section correction
+
+        Rafael Gomes (2):
+              Added nif support
+              Added spring-framework-petclinic to CA1 folder. References #1
+
+Como se pode observar o *output* mostra-nos os diferentes contribuintes através dos seus *usernames* e o número de *commits* de cada. Para além disso, podemos observar também as mensagens referentes a cada *commit*, caso existam.
+
+Se o objetivo for ter um *output* mais pormenorizado, o comando ***git log*** é mais útil, podemos ainda utilizar a *flag* ***--graph*** de forma a termos o *output* mostrado num gráfico para mais fácil visualização.
+
+        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ git log --graph
+        * commit 5fd878521fd7cc392d10e6befaba0063e5492cb4 (HEAD -> main, origin/main, origin/HEAD)
+        | Author: David Ferreira <davidsferreira02@gmail.com>
+        | Date:   Sat Sep 27 22:00:51 2025 +0100
+        | 
+        |     Git log command #4
+        | 
+        * commit 13936471382495988eac32344324027ad29bc3ad (tag: 1.2.0)
+        | Author: David Ferreira <davidsferreira02@gmail.com>
+        | Date:   Sat Sep 27 21:53:01 2025 +0100
+        | 
+        |     Remove .vscode dir
+        | 
+        * commit 10a46164a3c6345fc55836f628f242fc12a69f5f
+        | Author: David Ferreira <davidsferreira02@gmail.com>
+        | Date:   Sat Sep 27 21:49:55 2025 +0100
+        | 
+        |     Testing the new feature #3
+        | 
+        * commit bff25d2ad30abb8c78fbd3e31d46eaf749486b3d
+        | Author: NunoCunha43 <1211689@isep.ipp.pt>
+        | Date:   Sat Sep 27 19:28:42 2025 +0000
+        | 
+        |     Issue 2: readme section correction
+        | 
+        * commit aae60b14116863557cbad86f6ac5be578d29a991
+        | Author: NunoCunha43 <1211689@isep.ipp.pt>
+        | Date:   Sat Sep 27 18:07:36 2025 +0000
+        | 
+        |     Issue 2: Implementação feita e dados de teste adicionados
+        | 
+        * commit eeef565f4d4023919cd5dabd0359db547cd0e01f (tag: v1.1.0)
+        | Author: Rafael Gomes <1211426@isep.ipp.pt>
+        | Date:   Wed Sep 24 22:12:14 2025 +0100
+        | 
+        |     Added spring-framework-petclinic to CA1 folder. References #1
+        | 
+        * commit 8ea570ab89262c49561e3ef3a3ea05fb641eb427
+          Author: Rafael Gomes <1211426@isep.ipp.pt>
+          Date:   Wed Sep 17 22:59:37 2025 +0100
+
+              Added nif support
+
+Analisando o *output* deste comando podemos vizualizar o *hash* que identifica os commits, o autor, a data, mensagens e *tags* dos *commits* oferecendo mais informação quando comparado com o ***git shortlog***.
+
+Em suma, aquando da escrita desta secção do *Technical Report* existem 3 contribuintes diferentes que realizaram um total de 7 *commits*
