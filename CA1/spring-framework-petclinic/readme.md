@@ -279,40 +279,24 @@ Para confirmar que o realmente este *branch* se encontra com mais commits que o 
 
 ### 2º Passo - Realizar um *commit* conflituoso no *branch main*
 
-Neste caso, um dos *branches* utilizado foi o *main*, como podemos ver no seguinte *output*:
-
-        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1/spring-framework-petclinic$ git branch --all
-          email-field
-        * main
-          remotes/origin/HEAD -> origin/main
-          remotes/origin/email-field
-          remotes/origin/main
-
-Posto isto, foram feitas alterações ao ficheiro *readme.md* e enviadas para o repositório remoto, para que este sirva de teste.
-
-        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1/spring-framework-petclinic$ git status
-        On branch main
-        Your branch is up to date with 'origin/main'.
+Posto isto, foram feitas alterações ao ficheiro *readme.md* no *main branch* e enviadas para o repositório remoto, para que este sirva de teste.
         
-        Changes to be committed:
-          (use "git restore --staged <file>..." to unstage)
-                modified:   readme.md
-        
-        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1/spring-framework-petclinic$ git commit -m "#12 - Commit para o Main Branch para teste de conflitos"
-        [main 5fb2fb6] #12 - Commit para o Main Branch para teste de conflitos
-         1 file changed, 11 insertions(+), 1 deletion(-)
-        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1/spring-framework-petclinic$ git push origin main
+        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ git add -A
+        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ git commit -m "#12 - Issue 12 - Error fix"
+        [main 8f5a3b0] #12 - Issue 12 - Error fix
+         1 file changed, 21 insertions(+), 1 deletion(-)
+        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ git push origin main 
         Enumerating objects: 9, done.
         Counting objects: 100% (9/9), done.
         Delta compression using up to 2 threads
         Compressing objects: 100% (5/5), done.
-        Writing objects: 100% (5/5), 965 bytes | 160.00 KiB/s, done.
+        Writing objects: 100% (5/5), 959 bytes | 137.00 KiB/s, done.
         Total 5 (delta 2), reused 0 (delta 0), pack-reused 0
         remote: Resolving deltas: 100% (2/2), completed with 2 local objects.
         To github.com:davidsferreira02/cogsi2526-1240444-1211426-1211689.git
-           0604d8b..5fb2fb6  main -> main
-        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1/spring-framework-petclinic$ 
-
+           ff3185b..8f5a3b0  main -> main
+        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ 
+        
 De seguida,
 
 ## Issue 12 - Aditional Technologies
