@@ -256,7 +256,7 @@ Em suma, aquando da escrita desta secção do *Technical Report*, existem 3 cont
 
 ## Issue 11 - Create and Solve Merge conflicts
 
-Para ser possível verificar-se *merge conflicts* no repositório e prontamente corrigi-los foi necessário criar-se este tipo de conflitos de forma controlado.
+Para ser possível verificar-se *merge conflicts* no repositório e prontamente corrigi-los foi necessário criar-se alterações nos mesmos ficheiros, de forma controlado, para que se evidencia-se conflitos.
 
 ### 1º Passo - Realizar um *commit* no novo *branch*
 
@@ -272,14 +272,11 @@ De seguida, foi feito o *commit* desta alteração para o *branch* criado, como 
         Date:   Fri Oct 3 17:08:05 2025 +0000
 
             #12 - criacao de conflito
-
-Para confirmar que o realmente este *branch* se encontra com mais commits que o *main* podemos recorrer ao comando ***git status***:
-
-
+        
 
 ### 2º Passo - Realizar um *commit* conflituoso no *branch main*
 
-Posto isto, foram feitas alterações ao ficheiro *readme.md* no *main branch* e enviadas para o repositório remoto, para que este sirva de teste.
+Posto isto, foram feitas alterações, também, no ficheiro *readme.md* no *main branch* e enviadas para o repositório remoto.
         
         nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ git add -A
         nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ git commit -m "#12 - Issue 12 - Error fix"
@@ -297,8 +294,60 @@ Posto isto, foram feitas alterações ao ficheiro *readme.md* no *main branch* e
            ff3185b..8f5a3b0  main -> main
         nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ 
         
-De seguida, foi necessário alterar-se o *branch* atual e fazer-se algumas alterações no mesmo ficheiro.
+### 3º Passo - Fazer *merge* dos branches
 
+Para o *merge* dos *branches* ser feito, devemos executar o comando ***git merge*** no *branch* no qual queremos que as mudanças sejam acrescentadas, sendo neste caso o *main branch*.
+
+Observando o seguinte *output* podemos afirmar que o objetivo pretendido foi alcançado. Podemos afirmá-lo porque o *merge* falhou devido a conflitos, tal como pretendido.
+
+        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ git merge conflict_issue
+        Auto-merging CA1/spring-framework-petclinic/readme.md
+        CONFLICT (content): Merge conflict in CA1/spring-framework-petclinic/readme.md
+        Automatic merge failed; fix conflicts and then commit the result.
+        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ 
+
+### 4º Passo - Resolver os conflitos e fazer *commit* da versão final
+
+Abrindo o ficheiro, com um qualquer editor de texto, que é mostrado no passo anterior podemos perceber facilmente onde o conflito existe, pois este é segmentado do restante ficheiro, como podemos ver no seguinte excerto. 
+
+        <<<<<<< HEAD
+                   ff3185b..8f5a3b0  main -> main
+                nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ 
+
+        De seguida,
+        =======
+                   0604d8b..5fb2fb6  main -> main
+                nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1/spring-framework-petclinic$ 
+
+        De seguida, foi necessário alterar-se o *branch* atual e fazer-se algumas alterações no mesmo ficheiro.
+
+        # TEXTO DE TESTE PARA ISSUE DE MERGE CONFLICT.
+        >>>>>>> conflict_issue
+
+Para resolver-se o conflito basta apenas definir-se a versão final, editando o ficheiro uma última vez e fazendo *commit* do mesmo.
+
+        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ git add -A
+        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ git status
+        On branch main
+        Your branch is up to date with 'origin/main'.
+
+        All conflicts fixed but you are still merging.
+          (use "git commit" to conclude merge)
+
+        Changes to be committed:
+                modified:   spring-framework-petclinic/readme.md
+
+Podemos ainda vizualizar todo este processo através de um gráfico obtido através do comando ***git log --graph --oneline --decorate***. Neste gráfico podemos a divisão da linha *commits*, que representa a criação do *branch* e no final a junção de ambos novamente numa linha única representando assim o *merge* feito.
+
+        nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ git log --graph --oneline --decorate
+        *   4a62b5c (HEAD -> main) #12 - Merge conflict solved
+        |\  
+        | * aea38a6 (origin/conflict_issue, conflict_issue) #12 - criacao de conflito
+        * | c299b6c (origin/main, origin/HEAD) #12 - Issue 12 1st part of Technical Report
+        * | 8f5a3b0 #12 - Issue 12 - Error fix
+        |/  
+        * ff3185b #12 - Commit para o Main Branch para teste de conflitos (update)
+        * 5fb2fb6 #12 - Commit para o Main Branch para teste de conflitos
 
 ## Issue 12 - Aditional Technologies
 
