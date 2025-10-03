@@ -252,4 +252,14 @@ Se o objetivo for ter um *output* mais pormenorizado, o comando ***git log*** é
 
 Analisando o *output* deste comando podemos vizualizar o *hash* que identifica os commits, o autor, a data, mensagens e *tags* dos *commits* oferecendo mais informação quando comparado com o ***git shortlog***.
 
-Em suma, aquando da escrita desta secção do *Technical Report* existem 3 contribuintes diferentes que realizaram um total de 7 *commits*
+Em suma, aquando da escrita desta secção do *Technical Report*, existem 3 contribuintes diferentes que realizaram um total de 7 *commits*
+
+## Issue 12 - Aditional Technologies
+
+### Mercurial
+
+A primeira tecnologia alternativa ao *Git* encontrada é o ***Mercurial***, a filosofia de ambos difere em alguns pontos. Como podemos ler no artigo de *Nelson Alfonso* de setembro de 2024, da revista *Medium*, [a filosofia do *git* oferece mais flexibilidade e poder, mesmo que a curva de aprendizagem seja mais íngrime, enquanto que a do *Mercurial* baseia-se na fácil e simples utilização](https://medium.com/@Nelsonalfonso/git-vs-mercurial-the-battle-of-distributed-version-control-titans-79ffbf3d67d7).
+
+#### Criação do repositório
+
+Em primeiro lugar, é necessário instalar o ***Mercurial*** através do comando ***sudo apt install mercurial*** e, de seguida, definir o *username* que pretendemos usar, editando o ficheiro */.hgrc*. 
