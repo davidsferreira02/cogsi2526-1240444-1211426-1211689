@@ -226,6 +226,28 @@ Para verificar as mudanças é necessário correr o comando **./mvnw -DskipTests
 
 Como podemos ver, o campo foi adicionado com sucesso à tabela dos veterinários.
 
+## Issue 6 - Identify default branch and latest commit date
+
+### 1º Passo - Obter informações do remote
+
+Para identificar a *default branch* do repositório remoto e recolher informação sobre as referências remotas, foi utilizado:
+
+    git remote show origin
+
+![git remote show origin](img/identifyDefaultBranchAndLatestCommitDate/WindowsTerminal_PNO14o5kUM.png)
+
+Este comando lista a *HEAD branch* e outras informações úteis sobre o *remote* configurado (origin).
+
+### 2º Passo - Obter o último commit na branch principal
+
+Com a *default branch* identificada, o comando seguinte foi usado para obter o último *commit* dessa referência remota:
+
+    git log origin/main -1
+
+![git log origin/main -1](img/identifyDefaultBranchAndLatestCommitDate/WindowsTerminal_CZirlqPhqX.png)
+
+Isto mostra o *commit* mais recente na branch `origin/main`, incluindo o *hash*, autor e data do *commit*.
+
 ## Issue 7 - Count distinct contributors in the repository 
 
 É possível observar-se os diferentes contribuintes do projeto através da utilização dos comandos ***git log*** e ***git shortlog***. De forma a informação ser moldada às possíveis necessidades pode-se utilizar as *flags* associadas.
