@@ -6,6 +6,49 @@ Technical report do CA01 no âmbito da UC de COGSI realizado por:
 2. Rafael Gomes - 1211426
 3. Nuno Cunha - 1211689
 
+## Issue 1 - Copy Spring Petclinic source code into CA1 folder and push to repository
+ 
+### 1º Passo - Copiar código para a pasta CA1
+
+Para iniciar este *issue* foi copiado o código-fonte do Spring Petclinic para a pasta indicada no enunciado (`CA1/spring-framework-petclinic/`). Esta cópia garante que a versão original do projecto fica preservada e que toda a implementação necessária ao trabalho está localizada na pasta do *assignment*.
+
+ 
+### 2º Passo - Fazer *staging*, *commit* e *push* das alterações
+
+Depois de copiar os ficheiros para `CA1/` foram executados os comandos Git habituais para adicionar os ficheiros ao repositório e partilhar as alterações com o repositório remoto:
+
+    git add -A
+    git commit -m "Added spring-framework-petclinic to CA1 folder. References #1"
+    git push
+
+![git add -A](img/copyCodeToCA1Folder/WindowsTerminal_gyMPcuWVvO.png)
+
+![git push](img/copyCodeToCA1Folder/WindowsTerminal_vCvZzDHcZh.png)
+
+Estes comandos colocam todos os ficheiros novos e modificados em *staging*, criam um *commit* com uma mensagem descritiva e enviam as alterações para o `remote` (origin).
+
+### 3º Passo - Criar e enviar uma tag de versão
+
+Para registar um ponto de versão associada a este *issue* foi criada uma tag anotada e enviada para o repositório remoto:
+
+    git tag -a v1.1.0 -m "Release version 1.1.0"
+    git push origin v1.1.0
+
+![git tag -a v.1.1.0 -m "Release version 1.1.0"](img/copyCodeToCA1Folder/WindowsTerminal_A7O4w0RYNJ.png)
+![git push origin v1.1.0](img/copyCodeToCA1Folder/WindowsTerminal_TFCIIYbAXe.png)
+
+Esta tag permite identificar facilmente a importação inicial do projeto na árvore do repositório.
+
+### 4º Passo - Verificação da tag
+
+Para confirmar que a tag foi criada corretamente e que aponta para o *commit* desejado usou-se:
+
+    git show v1.1.0
+
+![git show v1.1.0](img/copyCodeToCA1Folder/WindowsTerminal_GUoeluRuBb.png)
+
+Isto mostra o *commit* associado, o autor e a data.
+
 ## Issue 2 - Add veterinarian's Professional Registration Number field
 ### 1º Passo - Obter a versão mais recente do projeto
 Para se obter a ultima versão do projeto utilizou-se o comando ***git pull***, obtendo o seguinte resultado.
