@@ -297,7 +297,8 @@ Posto isto, foram feitas alterações ao ficheiro *readme.md* no *main branch* e
            ff3185b..8f5a3b0  main -> main
         nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA1$ 
         
-De seguida,
+De seguida, foi necessário alterar-se o *branch* atual e fazer-se algumas alterações no mesmo ficheiro.
+
 
 ## Issue 12 - Aditional Technologies
 
