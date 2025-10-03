@@ -319,6 +319,48 @@ Analisando o *output* deste comando podemos vizualizar o *hash* que identifica o
 
 Em suma, aquando da escrita desta secção do *Technical Report*, existem 3 contribuintes diferentes que realizaram um total de 7 *commits*
 
+## Issue 10 - Develop Tests for the email field feature
+
+### 1º Passo - Mudar para a branch de trabalho
+
+Os testes para a funcionalidade do campo de email foram desenvolvidos na branch de funcionalidade dedicada:
+
+    git checkout email-field
+
+![git checkout email-field](img/emailFieldTests/WindowsTerminal_cpyCAoU1oa.png)
+
+Isto coloca o repositório no contexto da branch `email-field`, onde a implementação do recurso e os testes associados foram adicionados.
+
+### 2º Passo - Adicionar testes unitários
+
+Foram adicionados e executados testes unitários que cobrem o novo campo de email adicionado à entidade `Vet`.
+
+### 3º Passo - Commit e push das mudanças
+
+Após ajustar e adicionar os testes, os comandos seguintes foram usados para registar e enviar as alterações para o repositório remoto:
+
+    git add .
+    git commit -m "Added unit test for email field in Vet class. #10"
+    git push -u origin email-field
+
+![git add .](img/emailFieldTests/WindowsTerminal_hCdA3IxHXO.png)
+![git commit -m "Added unit test for email field in Vet class. #10"](img/emailFieldTests/WindowsTerminal_M3dCgkvWya.png)
+![git push -u origin email-field](img/emailFieldTests/WindowsTerminal_BBAbhv8zj9.png)
+
+Isto faz **staging** de todas as alterações, cria um *commit* com os testes e envia a informação para a branch `email-field` no `remote` (origin).
+
+### 4º Passo - Criar e enviar uma tag de versão para a branch
+
+Para marcar a versão associada às alterações e aos testes, foi criada uma tag e enviada ao repositório remoto:
+
+    git tag -a v1.3.0 -m "Release version 1.3.0"
+    git push origin email-field v1.3.0
+
+![git tag -a v1.3.0 -m "Release version 1.3.0"](img/emailFieldTests/WindowsTerminal_M9R8mmNVHN.png)
+![git push origin email-field v1.3.0](img/emailFieldTests/WindowsTerminal_NtXCaj2VHm.png)
+
+O processo de criação e envio da tag é semelhante ao usado anteriormente, mas agora a tag é associada à branch `email-field`.
+
 ## Issue 11 - Create and Solve Merge conflicts
 
 Para ser possível verificar-se *merge conflicts* no repositório e prontamente corrigi-los foi necessário criar-se alterações nos mesmos ficheiros, de forma controlado, para que se evidencia-se conflitos.
