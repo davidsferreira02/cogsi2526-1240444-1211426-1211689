@@ -222,7 +222,7 @@ Dado que estamos a trabalhar com um repositório remoto é necessário correr o 
 
 Para verificar as mudanças é necessário correr o comando **./mvnw -DskipTests jetty:run-war** e, de seguida, aceder à pagina *web* e verificar se na aba dos veterinários as mudanças são visíveis.
 
-![Validação da implementação](\img\licenseNumberFeature\Issue2ValidacaoImplementacao.png "Issue 2")
+![Validação da implementação](img\licenseNumberFeature\Issue2ValidacaoImplementacao.png "Issue 2")
 
 Como podemos ver, o campo foi adicionado com sucesso à tabela dos veterinários.
 
@@ -556,9 +556,7 @@ De seguida, foi criado um ficheiro para ser feito o primeiro *commit* do reposit
         date:        Sat Oct 04 00:42:46 2025 +0000
         summary:     Inital Commit for Mercurial Repo implementation
 
-#### Clonagem do repositório remoto
-
-O segundo passo feito, foi proceder à clonagem do repositório noutra máquina e perceber se as alterações feitas nesta cópia são persistidas no repositório remoto. Para isso, foi copiado todo o código da aplição feito o *commit* e o envio para para o reposiório remoto através do comando ***hg push***
+Posto isto, o primeiro *commit* foi executado, passou-se assim a clonar o repositório noutra máquina através do comando ***hg clone ssh://cogsi@40.66.41.9/cogsi2025/project***. Dado que estamos a clonar o repositório via *ssh* será pedido para que seja colocado as credenciais de acesso à máquina. Para testar a partilha de alterações e envio das mesmas para o repositório remoto, foi copiada toda a aplicação para o repositório *mercurial* feito o *commit* e envio para o repositório remoto através do comando ***hg push***.
 
         nacunha@cogsi:/mnt/hgfs/Shared/project$ sudo hg push
         pushing to ssh://cogsi@40.66.41.9//cogsi2025/project
@@ -570,16 +568,16 @@ O segundo passo feito, foi proceder à clonagem do repositório noutra máquina 
         remote: adding file changes
         remote: added 1 changesets with 431 changes to 431 files
 
-É importante sublinhar que todos os *commits* enviados são colocados como *change sets* na pasta *.hg*, não estando visivel quando executamos o comando *ls* no diretório. Para contornar esta situação é possível usar-se o comando ***hg update***.
+É importante sublinhar que todos os *commits* enviados são colocados como *change sets* na pasta *.hg*, não estando a pasta visível quando executamos o comando *ls*. Caso se queira ver a pasta esta situação é facilmente alterada executando o comando ***hg update***.
 
         cogsi@cogsi-Linux-VM:/cogsi2025/project$ hg update
         431 files updated, 0 files merged, 0 files removed, 0 files unresolved
         cogsi@cogsi-Linux-VM:/cogsi2025/project$ ls
         CA1  filename.txt
 
-#### Validaçoes
+Por fim, podemos facilmente validar se a aplicação está operacional colocando-a em execução, usando o comando ***./mvnw -DskipTests jetty:run-war***, e verificando se a mesma está a correr sem qualquer problema.
 
-Para validarmos se tudo ficou operacional podemos colocar a aplicação a correr usando o código guardado no repositório *Mercurial*. usando o comando: ***./mvnw -DskipTests jetty:run-war***, tal como realizado no *Issue 2*.
+![Validação da implementação Mercurial](img\mercuria1stCommit\appvalidation.png "Issue 13")
 
 ## Issue 17 - Identify default branch and latest commit date (Mercurial)
 
@@ -622,3 +620,22 @@ Para comparar com a atividade global do repositório, obteve-se também o últim
 ![hg log -l 1](img/identifyDefaultBranchAndLatestCommit(Mercurial)/WindowsTerminal_QNhsUbecOj.png)
 
 No caso em análise, o último *commit* do repositório pertencia à branch `1:8429072951db` (ou seja, não estava na `default`).
+
+#### Issue 18 - Count distinct contributors in the repository
+
+Para verificarmos os diferentes contribuintes do repositório, podemos utilizar a extensão *chern*. Esta serve para contar as linhas alteradas no repositório por cada utilizador. Antes de se executar o comando é necessário importar a extensão, fazendos as seguintes alterações no ficheiro ***hgrc***:
+
+        nacunha@cogsi:/mnt/hgfs/Shared/project$ cat /etc/mercurial/hgrc
+        # system-wide mercurial configuration file
+        # See hgrc(5) for more information
+        [ui]
+        username = NunoCunha43 <1211689@isep.ipp.pt>
+        [extensions]
+        churn=
+
+Como podemos observar, foi acrescentada a secção ***extensions*** e colocado dentro da mesma a extensão ***chern***. De seguida, executou-se o comando ***hg chern*** e obtivemos o seguinte *output*:
+
+        nacunha@cogsi:/mnt/hgfs/Shared/project$ sudo hg churn
+        1211689@isep.ipp.pt  47314 ******************************************** 
+
+Analisando o *output* podemos ver que, aquando da execução do comando, apenas um utilizador fez alterações ao repositório.
