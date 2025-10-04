@@ -21,19 +21,20 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.springframework.beans.support.MutableSortDefinition;
+import org.springframework.beans.support.PropertyComparator;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
-import jakarta.xml.bind.annotation.XmlElement;
-import jakarta.persistence.Column;
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
-
-import org.springframework.beans.support.MutableSortDefinition;
-import org.springframework.beans.support.PropertyComparator;
+import jakarta.xml.bind.annotation.XmlElement;
 
 /**
  * Simple JavaBean domain object representing a veterinarian.
@@ -57,12 +58,25 @@ public class Vet extends Person {
     @Digits(fraction = 0, integer = 10)
     private String professionalNumber;
 
+    @Column(name = "email")
+    @NotEmpty
+    @Email
+    private String email;
+
     public String getProfessionalNumber() {
         return this.professionalNumber;
     }
 
     public void setProfessionalNumber(String newNumber) {
         this.professionalNumber = newNumber;
+    }
+
+    public String getEmail() {
+        return this.email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     protected Set<Specialty> getSpecialtiesInternal() {
