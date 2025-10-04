@@ -226,6 +226,202 @@ Para verificar as mudanças é necessário correr o comando **./mvnw -DskipTests
 
 Como podemos ver, o campo foi adicionado com sucesso à tabela dos veterinários.
 
+
+## Issue 3 - Implement and test support for the new field 
+
+### 1º Passo - Análise do campo implementado
+
+Com o campo ***Professional Registration Number*** já implementado no Issue 2, foi necessário criar testes unitários para validar o comportamento e as regras de negócio associadas a este campo.
+
+### 2º Passo - Criar testes unitários para o campo Professional Registration Number
+
+Foram implementados testes na classe `VetTests.java` para validar o novo campo:
+
+#### Teste de validação com número profissional válido:
+    @Test
+    void shouldSetAndGetProfessionalNumber() {
+        Vet vet = new Vet();
+        vet.setFirstName("John");
+        vet.setLastName("Doe");
+        String professionalNumber = "1234567890";
+
+        vet.setProfessionalNumber(professionalNumber);
+
+        assertThat(vet.getProfessionalNumber()).isEqualTo(professionalNumber);
+    }
+
+#### Teste de validação com número profissional vazio:
+    @Test
+    void shouldNotValidateWhenProfessionalNumberIsEmpty() {
+        Vet vet = createValidVet();
+        vet.setProfessionalNumber("");
+
+        Validator validator = createValidator();
+        Set<ConstraintViolation<Vet>> constraintViolations = validator.validate(vet);
+
+        assertThat(constraintViolations).hasSize(2); 
+        
+        Set<String> messages = constraintViolations.stream()
+            .map(ConstraintViolation::getMessage)
+            .collect(java.util.stream.Collectors.toSet());
+        
+        assertThat(messages).containsExactlyInAnyOrder(
+            "must not be empty",
+            "numeric value out of bounds (<10 digits>.<0 digits> expected)"
+        );
+    }
+
+#### Teste de validação com número profissional nulo:
+    @Test
+    void shouldNotValidateWhenProfessionalNumberIsNull() {
+        Vet vet = createValidVet();
+        vet.setProfessionalNumber(null);
+
+        Validator validator = createValidator();
+        Set<ConstraintViolation<Vet>> constraintViolations = validator.validate(vet);
+
+        assertThat(constraintViolations).hasSize(1);
+        ConstraintViolation<Vet> violation = constraintViolations.iterator().next();
+        assertThat(violation.getPropertyPath()).hasToString("professionalNumber");
+        assertThat(violation.getMessage()).isEqualTo("must not be empty");
+    }
+
+### 3º Passo - Validações implementadas
+
+Os testes cobrem os seguintes cenários de validação:
+
+1. **Número profissional válido**: Verifica se o *getter* e *setter* funcionam corretamente
+2. **Número profissional vazio**: Valida que campos vazios não são aceites (violação `@NotEmpty`)
+3. **Número profissional nulo**: Garante que valores nulos são rejeitados
+4. **Formato numérico**: Valida a anotação `@Digits(fraction = 0, integer = 10)` que limita a 10 dígitos
+
+### 4º Passo - Executar os testes
+
+Para verificar se os testes funcionam corretamente, foi executado o comando Maven:
+
+    ./mvnw test -Dtest=VetTests
+
+**Nota sobre compatibilidade Java**: Durante a execução inicial dos testes, pode ocorrer um erro de incompatibilidade de versão Java:
+
+    ERROR: org/springframework/samples/petclinic/model/VetTests has been compiled by a more recent version of the Java Runtime (class file version 65.0), this version of the Java Runtime only recognizes class file versions up to 61.0
+
+Este erro indica que os testes foram compilados com Java 21 mas o runtime atual está a usar Java 17. Para resolver:
+
+1. **Verificar a versão do Java:**
+   ```
+   java -version
+   ```
+
+2. **Limpar e recompilar o projeto:**
+   ```
+   ./mvnw clean compile test-compile
+   ./mvnw test -Dtest=VetTests
+   ```
+
+Após a resolução do problema de compatibilidade, os testes passaram com sucesso:
+
+    [INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.332 s
+    [INFO] Results:
+    [INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
+    [INFO] BUILD SUCCESS
+
+Os resultados confirmam que:
+
+- O campo `professionalNumber` está a funcionar corretamente
+- As validações `@NotEmpty` e `@Digits` estão a ser aplicadas
+- Os métodos *getter* e *setter* estão implementados adequadamente
+- Todos os 3 testes unitários passaram sem falhas ou erros
+
+### 5º Passo - Commit das alterações de teste
+
+As alterações dos testes foram registadas no repositório:
+
+    git add src/test/java/org/springframework/samples/petclinic/model/VetTests.java
+    git commit -m "Testing the new feature #3"
+    git push origin main
+
+Este commit documenta a implementação dos testes unitários para o campo ***Professional Registration Number***, completando assim o suporte e validação para esta funcionalidade.
+
+## Issue 4 - View and customize commit history with git log
+
+### 1º Passo - Explorar opções básicas do git log
+
+O comando `git log` oferece várias opções para visualizar e personalizar o histórico de commits. Foram exploradas as seguintes variações:
+
+#### Formato básico:
+    git log
+
+Mostra o histórico completo com hash, autor, data e mensagem de cada commit.
+
+![git log output](img/gitLog/gitLogOutput.png)
+
+#### Formato resumido:
+    git log --oneline
+
+Produz uma saída mais compacta com apenas o hash abreviado e a mensagem:
+
+    1a05ffd Documented issue #17
+    c4b490a Documented issue #5
+    75ae56a #13 - Mercurial Repo setup and 1st Commit
+    ee8934f Revert "Changed POM #5"
+    8437a27 Changed POM #5
+
+![git log --oneline output](img/gitLog/gitLogOnelineOutput.png)
+
+### 2º Passo - Utilizar formatação personalizada
+
+O parâmetro `--pretty=format:` permite criar formatos personalizados de saída:
+
+    git log --pretty=format:"%h - %an, %ar : %s" -5
+
+Este comando produz a saída:
+
+    1a05ffd - Rafael Gomes, 75 minutes ago : Documented issue #17
+    c4b490a - Rafael Gomes, 4 hours ago : Documented issue #5
+    75ae56a - NunoCunha43, 7 hours ago : #13 - Mercurial Repo setup and 1st Commit
+    ee8934f - Rafael Gomes, 7 hours ago : Revert "Changed POM #5"
+    8437a27 - Rafael Gomes, 7 hours ago : Changed POM #5
+
+![git log --pretty=format output](img/gitLog/gitLogPretty=formatOutput.png)
+
+**Explicação dos códigos de formatação:**
+- `%h`: Hash do commit (abreviado)
+- `%an`: Nome do autor
+- `%ar`: Data relativa do autor
+- `%s`: Assunto (mensagem do commit)
+
+### 3º Passo - Explorar opções avançadas de visualização
+
+#### Visualização gráfica:
+    git log --graph --oneline --decorate
+
+Mostra o histórico em formato de árvore, útil para visualizar branches e merges:
+
+![git log --graph --oneline --decorate output](img/gitLog/gitLogGraphOnelineDecorateOutput.png)
+
+
+### 4º Passo - Aplicações práticas
+
+Estas variações do `git log` são úteis para:
+
+1. **Análise rápida**: `git log --oneline` para uma visão geral
+2. **Debugging**: `git log --pretty=format:"%h - %an, %ar : %s"` para identificar quando e quem fez alterações específicas
+3. **Visualização de branches**: `git log --graph` para compreender a estrutura do repositório
+4. **Relatórios**: Filtros por autor e data para relatórios de progresso
+5. **Code reviews**: Análise detalhada de commits específicos
+
+### 5º Passo - Documentar no repositório
+
+Foi criado um commit específico para documentar esta exploração:
+
+    git add .
+    git commit -m "Git log command #4"
+    git push origin main
+
+Esta documentação serve como referência para a equipa sobre as diferentes formas de visualizar o histórico do projeto.
+
+
+
 ## Issue 5 - Revert changes to a specific commit
 
 ### 1º Passo - Introduzir uma alteração errada no `pom.xml`
