@@ -226,6 +226,70 @@ Para verificar as mudanças é necessário correr o comando **./mvnw -DskipTests
 
 Como podemos ver, o campo foi adicionado com sucesso à tabela dos veterinários.
 
+## Issue 5 - Revert changes to a specific commit
+
+### 1º Passo - Introduzir uma alteração errada no `pom.xml`
+
+Para testar a reversão de um commit foi introduzida, intencionalmente, uma alteração incorreta no ficheiro `pom.xml`. Após a alteração, verificou-se o estado do repositório para confirmar que a modificação foi detetada:
+
+    git status
+
+![git status](img/revertCommit/WindowsTerminal_Z30x8KK23f.png)
+
+### 2º Passo - Commit e push da alteração errada
+
+Seguiram-se os passos habituais para registar e enviar a alteração (tal como feito em issues anteriores):
+
+    git add pom.xml
+    git commit -m "Introduce intentional error in pom.xml for revert test"
+    git push
+
+Estes comandos colocam a alteração em *staging*, criam o *commit* e enviam-no para o `remote`.
+
+### 3º Passo - Obter o hash do commit a reverter
+
+Para identificar o *commit* a reverter e confirmar que a alteração foi publicada no `remote`, obteve-se o último *commit* na branch principal remota:
+
+    git log origin/main -1
+
+![git log origin/main -1](img/revertCommit/WindowsTerminal_p6ROxv4K0h.png)
+
+O output deste comando inclui o *hash*, autor, data e mensagem do *commit* — o *hash* foi usado no passo seguinte.
+
+### 4º Passo - Reverter o commit específico
+
+Com o *hash* do *commit* identificado, a reversão foi executada usando:
+
+    git revert <commit-hash>
+
+![git revert](img/revertCommit/WindowsTerminal_Oi2qcyTHg2.png)
+
+Isto cria um novo *commit* que desfaz as alterações introduzidas pelo *commit* original.
+
+### 5º Passo - Verificar o estado e enviar a reversão
+
+Após a execução do `git revert`, verificou-se o estado do repositório para confirmar que o novo *commit* (de revert) foi criado localmente:
+
+    git status
+
+![git status](img/revertCommit/WindowsTerminal_KVw2qQgaWn.png)
+
+Por fim, o *commit* de reversão foi enviado para o repositório remoto:
+
+    git push
+
+![git push](img/revertCommit/WindowsTerminal_mbLqzPP7Bk.png)
+
+### 6º Passo - Verificação da reversão
+
+Para confirmar que a reversão foi bem-sucedida, foi executado o comando:
+
+    git log origin/main -1
+
+![alt text](img/revertCommit/WindowsTerminal_PN6pfFx9Ad.png)
+
+Isto mostrou o *commit* mais recente na branch `origin/main`, que deveria ser o *commit* de reversão, confirmando que a alteração incorreta foi desfeita.
+
 ## Issue 6 - Identify default branch and latest commit date
 
 ### 1º Passo - Obter informações do remote
