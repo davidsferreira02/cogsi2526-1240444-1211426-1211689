@@ -580,3 +580,45 @@ O segundo passo feito, foi proceder à clonagem do repositório noutra máquina 
 #### Validaçoes
 
 Para validarmos se tudo ficou operacional podemos colocar a aplicação a correr usando o código guardado no repositório *Mercurial*. usando o comando: ***./mvnw -DskipTests jetty:run-war***, tal como realizado no *Issue 2*.
+
+## Issue 17 - Identify default branch and latest commit date (Mercurial)
+
+### 1º Passo - Listar branches existentes
+
+Para verificar que branches estão presentes no repositório Mercurial foi executado:
+
+    hg branches
+
+![hg branches](img/identifyDefaultBranchAndLatestCommit(Mercurial)/WindowsTerminal_TIVED3DB7S.png)
+
+Este comando lista as branches presentes no repositório.
+
+### 2º Passo - Observação sobre a branch `default` no Mercurial
+
+Ao contrário do Git, onde a branch principal costuma chamar-se `main` ou `master`, no Mercurial a branch default chama-se efetivamente `default`. Assim, quando se pretende consultar a última atividade na branch principal, usamos o nome `default` nas queries do `hg`.
+
+### 3º Passo - Obter o último commit na branch `default`
+
+Para recolher a data do último *commit* especificamente na branch `default` foi executado:
+
+    hg log -r "branch(default)" -l 1
+
+![hg log -r "branch(default)"](img/identifyDefaultBranchAndLatestCommit(Mercurial)/WindowsTerminal_hpzBzZcXt3.png)
+
+Isto retorna o registro do commit mais recente cuja branch é `default`, incluindo utilizador, data e mensagem.
+
+Explicação do comando:
+
+- `log` — mostra o histórico de commits.
+- `-r "branch(default)"` — revset que seleciona todas as revisões pertencentes à branch chamada `default`. As aspas evitam que o shell interprete parênteses ou espaços.
+- `-l 1` — limita a saída a 1 entrada; combinado com a ordem padrão do `hg log` (inversamente por data) isto retorna o commit mais recente dessa branch.
+
+### 4º Passo - Obter o último commit no repositório inteiro
+
+Para comparar com a atividade global do repositório, obteve-se também o último *commit* em todo o repositório usando:
+
+    hg log -l 1
+
+![hg log -l 1](img/identifyDefaultBranchAndLatestCommit(Mercurial)/WindowsTerminal_QNhsUbecOj.png)
+
+No caso em análise, o último *commit* do repositório pertencia à branch `1:8429072951db` (ou seja, não estava na `default`).
