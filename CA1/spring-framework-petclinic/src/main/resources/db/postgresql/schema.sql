@@ -2,6 +2,8 @@ CREATE TABLE IF NOT EXISTS vets (
   id SERIAL,
   first_name VARCHAR(30),
   last_name VARCHAR(30),
+  professional_number VARCHAR(30),
+  email VARCHAR(255),
   CONSTRAINT pk_vets PRIMARY KEY (id)
 );
 
