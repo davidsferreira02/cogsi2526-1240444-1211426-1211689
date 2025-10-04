@@ -222,7 +222,7 @@ Dado que estamos a trabalhar com um repositório remoto é necessário correr o 
 
 Para verificar as mudanças é necessário correr o comando **./mvnw -DskipTests jetty:run-war** e, de seguida, aceder à pagina *web* e verificar se na aba dos veterinários as mudanças são visíveis.
 
-![Validação da implementação](/CA1/spring-framework-petclinic/img/licenseNumberFeature/Issue2ValidacaoImplementacao.png "Issue 2")
+![Validação da implementação](\img\licenseNumberFeature\Issue2ValidacaoImplementacao.png "Issue 2")
 
 Como podemos ver, o campo foi adicionado com sucesso à tabela dos veterinários.
 
@@ -462,6 +462,57 @@ Podemos ainda vizualizar todo este processo através de um gráfico obtido atrav
 
 A primeira tecnologia alternativa ao *Git* encontrada é o ***Mercurial***, a filosofia de ambos difere em alguns pontos. Como podemos ler no artigo de *Nelson Alfonso* de setembro de 2024, da revista *Medium*, [a filosofia do *git* oferece mais flexibilidade e poder, mesmo que a curva de aprendizagem seja mais íngrime, enquanto que a do *Mercurial* baseia-se na fácil e simples utilização](https://medium.com/@Nelsonalfonso/git-vs-mercurial-the-battle-of-distributed-version-control-titans-79ffbf3d67d7).
 
-#### Criação do repositório
+#### Issue 13 - Create Repo & do the 1st commit
 
-Em primeiro lugar, é necessário instalar o ***Mercurial*** através do comando ***sudo apt install mercurial*** e, de seguida, definir o *username* que pretendemos usar, editando o ficheiro */.hgrc*. 
+Em primeiro lugar, é necessário instalar o ***Mercurial*** através do comando ***sudo apt install mercurial*** e do comando ***sudo snap install mercurial***, de seguida, definir o *username* que pretendemos usar, editando o ficheiro *etc/mercurial/hgrc*. 
+
+        cogsi@cogsi-Linux-VM:/etc/mercurial$ cat hgrc
+        # system-wide mercurial configuration file
+        # See hgrc(5) for more information
+        [ui]
+        username = NunoCunha43 <1211689@isep.ipp.pt>
+
+É de grande importância salientar que devido a falta de ferramentas atuais para a gestão do repositório, tal como o *GitHub* para repositórios *git*, o repositório Mercurial foi colocado numa máquina virtual na *Azure* de forma a que esta seja acessível por todos os contribuintes do repositório. Posto isto, o repositório é iniciado com o comando:
+
+        hg init project
+
+De seguida, foi criado um ficheiro para ser feito o primeiro *commit* do repositório. Usando-se os seguintes comandos:
+
+1. ***hg add*** - este comando desempenha a mesma função que o *git add*, de notar que quando usado sem mais parâmetros o comando faz *staging* de todas as alterações.
+
+        cogsi@cogsi-Linux-VM:/cogsi2025/project$ sudo hg add
+        adding filename.txt
+
+2. ***hg commit*** - tal como o nome indica, este comando faz o *commit* das alterações pedindo um sumário do conteúdo do mesmo, que podemos ver usando o comando ***hg log***
+
+        cogsi@cogsi-Linux-VM:/cogsi2025/project$ hg log
+        changeset:   0:9820ac935a9f
+        tag:         tip
+        user:        NunoCunha43 <1211689@isep.ipp.pt>
+        date:        Sat Oct 04 00:42:46 2025 +0000
+        summary:     Inital Commit for Mercurial Repo implementation
+
+#### Clonagem do repositório remoto
+
+O segundo passo feito, foi proceder à clonagem do repositório noutra máquina e perceber se as alterações feitas nesta cópia são persistidas no repositório remoto. Para isso, foi copiado todo o código da aplição feito o *commit* e o envio para para o reposiório remoto através do comando ***hg push***
+
+        nacunha@cogsi:/mnt/hgfs/Shared/project$ sudo hg push
+        pushing to ssh://cogsi@40.66.41.9//cogsi2025/project
+        cogsi@40.66.41.9's password: 
+        searching for changes
+        remote: adding changesets                                                                                                                                                                                         
+
+        remote: adding manifests
+        remote: adding file changes
+        remote: added 1 changesets with 431 changes to 431 files
+
+É importante sublinhar que todos os *commits* enviados são colocados como *change sets* na pasta *.hg*, não estando visivel quando executamos o comando *ls* no diretório. Para contornar esta situação é possível usar-se o comando ***hg update***.
+
+        cogsi@cogsi-Linux-VM:/cogsi2025/project$ hg update
+        431 files updated, 0 files merged, 0 files removed, 0 files unresolved
+        cogsi@cogsi-Linux-VM:/cogsi2025/project$ ls
+        CA1  filename.txt
+
+#### Validaçoes
+
+Para validarmos se tudo ficou operacional podemos colocar a aplicação a correr usando o código guardado no repositório *Mercurial*. usando o comando: ***./mvnw -DskipTests jetty:run-war***, tal como realizado no *Issue 2*.
