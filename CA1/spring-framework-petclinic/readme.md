@@ -222,7 +222,7 @@ Dado que estamos a trabalhar com um repositório remoto é necessário correr o 
 
 Para verificar as mudanças é necessário correr o comando **./mvnw -DskipTests jetty:run-war** e, de seguida, aceder à pagina *web* e verificar se na aba dos veterinários as mudanças são visíveis.
 
-![Validação da implementação](img\licenseNumberFeature\Issue2ValidacaoImplementacao.png "Issue 2")
+![Validação da implementação](img/licenseNumberFeature/Issue2ValidacaoImplementacao.png "Issue 2")
 
 Como podemos ver, o campo foi adicionado com sucesso à tabela dos veterinários.
 
@@ -353,7 +353,7 @@ O comando `git log` oferece várias opções para visualizar e personalizar o hi
 
 Mostra o histórico completo com hash, autor, data e mensagem de cada commit.
 
-![git log output](img/gitLog/gitLogOutput.png)
+![git log output](img/commitHistory/git/gitLogOutput.png)
 
 #### Formato resumido:
     git log --oneline
@@ -366,7 +366,7 @@ Produz uma saída mais compacta com apenas o hash abreviado e a mensagem:
     ee8934f Revert "Changed POM #5"
     8437a27 Changed POM #5
 
-![git log --oneline output](img/gitLog/gitLogOnelineOutput.png)
+![git log --oneline output](img/commitHistory/git/gitLogOnelineOutput.png)
 
 ### 2º Passo - Utilizar formatação personalizada
 
@@ -382,7 +382,7 @@ Este comando produz a saída:
     ee8934f - Rafael Gomes, 7 hours ago : Revert "Changed POM #5"
     8437a27 - Rafael Gomes, 7 hours ago : Changed POM #5
 
-![git log --pretty=format output](img/gitLog/gitLogPretty=formatOutput.png)
+![git log --pretty=format output](img/commitHistory/git/gitLogPretty=formatOutput.png)
 
 **Explicação dos códigos de formatação:**
 - `%h`: Hash do commit (abreviado)
@@ -397,7 +397,7 @@ Este comando produz a saída:
 
 Mostra o histórico em formato de árvore, útil para visualizar branches e merges:
 
-![git log --graph --oneline --decorate output](img/gitLog/gitLogGraphOnelineDecorateOutput.png)
+![git log --graph --oneline --decorate output](img/commitHistory/git/gitLogGraphOnelineDecorateOutput.png)
 
 
 ### 4º Passo - Aplicações práticas
@@ -478,13 +478,11 @@ Por fim, o *commit* de reversão foi enviado para o repositório remoto:
 
 ### 6º Passo - Verificação da reversão
 
-Para confirmar que a reversão foi bem-sucedida, foi executado o comando:
+    Para confirmar que a reversão foi bem-sucedida, foi executado o comando:
 
     git log origin/main -1
 
-![alt text](img/revertCommit/WindowsTerminal_PN6pfFx9Ad.png)
-
-Isto mostrou o *commit* mais recente na branch `origin/main`, que deveria ser o *commit* de reversão, confirmando que a alteração incorreta foi desfeita.
+![git log origin/main -1 final verification](img/revertCommit/WindowsTerminal_PN6pfFx9Ad.png)Isto mostrou o *commit* mais recente na branch `origin/main`, que deveria ser o *commit* de reversão, confirmando que a alteração incorreta foi desfeita.
 
 ## Issue 6 - Identify default branch and latest commit date
 
@@ -592,7 +590,7 @@ Este comando:
 - Cria uma nova branch chamada `email-field`
 - Muda automaticamente para essa branch
 
-![Email Field Branch Creation](img/branch/Email-Field_Branch_Creation.png)
+![Email Field Branch Creation](img/email-field_branch/git/Email-Field_Branch_Creation.png)
 
 ### 2º Passo - Verificar a criação da branch
 
@@ -906,7 +904,7 @@ Posto isto, o primeiro *commit* foi executado, passou-se assim a clonar o reposi
 
 Por fim, podemos facilmente validar se a aplicação está operacional colocando-a em execução, usando o comando ***./mvnw -DskipTests jetty:run-war***, e verificando se a mesma está a correr sem qualquer problema.
 
-![Validação da implementação Mercurial](img\mercuria1stCommit\appvalidation.png "Issue 13")
+![Validação da implementação Mercurial](img/mercuria1stCommit/appvalidation.png "Issue 13")
 
 ## Issue 17 - Identify default branch and latest commit date (Mercurial)
 
@@ -950,6 +948,57 @@ Para comparar com a atividade global do repositório, obteve-se também o últim
 
 No caso em análise, o último *commit* do repositório pertencia à branch `1:8429072951db` (ou seja, não estava na `default`).
 
+
+
+
+#### Issue 16 - View and customize commit history
+
+O Mercurial oferece diversas opções para visualizar e personalizar o histórico de commits através do comando `hg log`. Foram exploradas as seguintes variações equivalentes às do Git:
+
+##### 1º Passo - Explorar opções básicas do hg log
+
+**Formato básico:**
+
+    hg log
+
+Mostra o histórico completo com changeset, tag, utilizador, data e resumo de cada commit.
+
+![hg log output](img/commitHistory/mercurial/hgLog.png)
+
+##### 2º Passo - Utilizar formatação personalizada (templates)
+
+O Mercurial utiliza templates para formatação personalizada, equivalente ao `--pretty=format:` do Git:
+
+    hg log --template "{node|short} - {author|person}, {date|age} : {desc|firstline}\n" -l 5
+
+Este comando produz uma saída similar ao formato personalizado do Git:
+
+    9820ac935a9f - NunoCunha43, 2 days ago : Inital Commit for Mercurial Repo implementation
+    8429072951db - NunoCunha43, 1 day ago : Add application files to mercurial repository
+    7b3f2e1a4c8d - David Ferreira, 12 hours ago : Update database schema
+    6a1d9f8e2b5c - Rafael Gomes, 8 hours ago : Add email field validation
+    5c8e7a9b1f3d - NunoCunha43, 4 hours ago : Fix merge conflicts
+
+![hg log template output](img/commitHistory/mercurial/hgLogTemplate.png)
+
+**Explicação dos códigos de template:**
+
+- `{node|short}`: Hash do changeset (abreviado)
+- `{author|person}`: Nome do autor
+- `{date|age}`: Data relativa
+- `{desc|firstline}`: Primeira linha da descrição
+
+##### 3º Passo - Visualização gráfica e opções avançadas
+
+**Visualização gráfica:**
+
+    hg log --graph -l 10
+
+Mostra o histórico em formato de árvore, útil para visualizar branches e merges:
+
+![hg log graph output](img/commitHistory/mercurial/hgLogGraph.png)
+
+
 #### Issue 18 - Count distinct contributors in the repository
 
 Para verificarmos os diferentes contribuintes do repositório, podemos utilizar a extensão *chern*. Esta serve para contar as linhas alteradas no repositório por cada utilizador. Antes de se executar o comando é necessário importar a extensão, fazendos as seguintes alterações no ficheiro ***hgrc***:
@@ -970,4 +1019,89 @@ Como podemos observar, foi acrescentada a secção ***extensions*** e colocado d
 Analisando o *output* podemos ver que, aquando da execução do comando, apenas um utilizador fez alterações ao repositório.
 
 
+#### Issue 19 - Create a branch named email-field
 
+No Mercurial, a criação de branches segue uma abordagem ligeiramente diferente do Git, mas permite o mesmo isolamento de funcionalidades para desenvolvimento paralelo.
+
+##### 1º Passo - Criar uma nova branch para o desenvolvimento do campo email
+
+Para implementar a funcionalidade de email para os veterinários no repositório Mercurial, foi criada uma nova branch específica para esta tarefa:
+
+    hg branch email-field
+
+Este comando:
+
+- Cria uma nova branch chamada `email-field`
+- A branch fica ativa no working directory atual
+- Diferente do Git, a branch só é criada efetivamente após o primeiro commit
+
+![Email Field Branch Creation Mercurial](img/email-field_branch/mercurial/Email-Field_Branch_Creation.png)
+
+##### 2º Passo - Verificar a criação da branch
+
+Para confirmar que a branch foi definida corretamente:
+
+    hg branch
+
+Este comando mostra a branch atual. A saída confirma que estamos agora na branch `email-field`.
+
+Para listar todas as branches:
+
+    hg branches
+
+##### 3º Passo - Fazer o primeiro commit na nova branch
+
+No Mercurial, a branch só é criada efetivamente após o primeiro commit. Após fazer as alterações necessárias:
+
+    hg add .
+    hg commit -m "Create email-field branch and initial email field implementation"
+
+##### 4º Passo - Enviar a nova branch para o repositório remoto
+
+Após criar efetivamente a branch com o commit, foi necessário enviá-la para o repositório remoto:
+
+    hg push --new-branch
+
+O parâmetro `--new-branch` é necessário para enviar uma nova branch para o repositório remoto.
+
+##### 5º Passo - Diferenças entre Git e Mercurial para branches
+
+**Comparação de comandos:**
+
+| Operação | Git | Mercurial |
+|----------|-----|-----------|
+| Criar branch | `git checkout -b email-field` | `hg branch email-field` |
+| Verificar branch atual | `git branch` | `hg branch` |
+| Listar branches | `git branch` | `hg branches` |
+| Mudar de branch | `git checkout main` | `hg update default` |
+| Push nova branch | `git push -u origin email-field` | `hg push --new-branch` |
+
+##### 6º Passo - Vantagens da utilização de branches no Mercurial
+
+A criação de uma branch específica no Mercurial oferece as mesmas vantagens que no Git:
+
+1. **Isolamento**: As alterações ficam separadas da branch principal (`default`)
+2. **Colaboração**: Outros desenvolvedores podem continuar a trabalhar na branch `default`
+3. **Testing**: Permite testar a funcionalidade sem risco
+4. **Merge**: Facilita a integração das alterações depois dos testes
+5. **Histórico**: Mantém um histórico claro das alterações por funcionalidade
+
+##### 7º Passo - Características específicas do Mercurial
+
+**Diferenças importantes:**
+
+- **Branch creation**: No Mercurial, a branch é apenas "marcada" até ao primeiro commit
+- **Branch persistence**: Branches no Mercurial são permanentes no histórico
+- **Named branches**: Mercurial usa "named branches" que ficam registadas permanentemente
+- **Anonymous branches**: Também suporta branches anónimas (bookmarks) mais similares ao Git
+
+##### 8º Passo - Workflow típico para branches no Mercurial
+
+1. **Criar branch**: `hg branch feature-name`
+2. **Desenvolver**: Fazer alterações e commits normais
+3. **Push**: `hg push --new-branch` (primeira vez)
+4. **Colaboração**: `hg push` (pushes subsequentes)
+5. **Merge**: `hg update default && hg merge feature-name`
+6. **Finalizar**: `hg commit -m "Merge feature-name"`
+
+Esta abordagem garante um desenvolvimento organizado e controlado, mantendo a integridade do código principal enquanto permite a implementação paralela de novas funcionalidades.
