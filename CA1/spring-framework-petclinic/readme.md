@@ -21,9 +21,8 @@ Depois de copiar os ficheiros para `CA1/` foram executados os comandos Git habit
     git commit -m "Added spring-framework-petclinic to CA1 folder. References #1"
     git push
 
-![git add -A](img/copyCodeToCA1Folder/WindowsTerminal_gyMPcuWVvO.png)
-
-![git push](img/copyCodeToCA1Folder/WindowsTerminal_vCvZzDHcZh.png)
+![git add -A](img/copyCodeToCA1Folder/gitAdd.png)
+![git push](img/copyCodeToCA1Folder/gitPush.png)
 
 Estes comandos colocam todos os ficheiros novos e modificados em *staging*, criam um *commit* com uma mensagem descritiva e enviam as alterações para o `remote` (origin).
 
@@ -34,8 +33,8 @@ Para registar um ponto de versão associada a este *issue* foi criada uma tag an
     git tag -a v1.1.0 -m "Release version 1.1.0"
     git push origin v1.1.0
 
-![git tag -a v.1.1.0 -m "Release version 1.1.0"](img/copyCodeToCA1Folder/WindowsTerminal_A7O4w0RYNJ.png)
-![git push origin v1.1.0](img/copyCodeToCA1Folder/WindowsTerminal_TFCIIYbAXe.png)
+![git tag -a v.1.1.0 -m "Release version 1.1.0"](img/copyCodeToCA1Folder/gitTag.png)
+![git push origin v1.1.0](img/copyCodeToCA1Folder/gitPushTag.png)
 
 Esta tag permite identificar facilmente a importação inicial do projeto na árvore do repositório.
 
@@ -45,7 +44,7 @@ Para confirmar que a tag foi criada corretamente e que aponta para o *commit* de
 
     git show v1.1.0
 
-![git show v1.1.0](img/copyCodeToCA1Folder/WindowsTerminal_GUoeluRuBb.png)
+![git show v1.1.0](img/copyCodeToCA1Folder/gitShowTag.png)
 
 Isto mostra o *commit* associado, o autor e a data.
 
@@ -430,7 +429,7 @@ Para testar a reversão de um commit foi introduzida, intencionalmente, uma alte
 
     git status
 
-![git status](img/revertCommit/WindowsTerminal_Z30x8KK23f.png)
+![git status](img/revertCommit/gitStatusModifiedPom.png)
 
 ### 2º Passo - Commit e push da alteração errada
 
@@ -448,7 +447,7 @@ Para identificar o *commit* a reverter e confirmar que a alteração foi publica
 
     git log origin/main -1
 
-![git log origin/main -1](img/revertCommit/WindowsTerminal_p6ROxv4K0h.png)
+![git log origin/main -1](img/revertCommit/gitLogErrorCommit.png)
 
 O output deste comando inclui o *hash*, autor, data e mensagem do *commit* — o *hash* foi usado no passo seguinte.
 
@@ -458,7 +457,7 @@ Com o *hash* do *commit* identificado, a reversão foi executada usando:
 
     git revert <commit-hash>
 
-![git revert](img/revertCommit/WindowsTerminal_Oi2qcyTHg2.png)
+![git revert](img/revertCommit/gitRevert.png)
 
 Isto cria um novo *commit* que desfaz as alterações introduzidas pelo *commit* original.
 
@@ -468,13 +467,13 @@ Após a execução do `git revert`, verificou-se o estado do repositório para c
 
     git status
 
-![git status](img/revertCommit/WindowsTerminal_KVw2qQgaWn.png)
+![git status](img/revertCommit/gitStatus.png)
 
 Por fim, o *commit* de reversão foi enviado para o repositório remoto:
 
     git push
 
-![git push](img/revertCommit/WindowsTerminal_mbLqzPP7Bk.png)
+![git push](img/revertCommit/gitPush.png)
 
 ### 6º Passo - Verificação da reversão
 
@@ -492,7 +491,7 @@ Para identificar a *default branch* do repositório remoto e recolher informaç�
 
     git remote show origin
 
-![git remote show origin](img/identifyDefaultBranchAndLatestCommitDate/WindowsTerminal_PNO14o5kUM.png)
+![git remote show origin](img/identifyDefaultBranchAndLatestCommitDate/gitRemoteShowOrigin.png)
 
 Este comando lista a *HEAD branch* e outras informações úteis sobre o *remote* configurado (origin).
 
@@ -502,7 +501,7 @@ Com a *default branch* identificada, o comando seguinte foi usado para obter o �
 
     git log origin/main -1
 
-![git log origin/main -1](img/identifyDefaultBranchAndLatestCommitDate/WindowsTerminal_CZirlqPhqX.png)
+![git log origin/main -1](img/identifyDefaultBranchAndLatestCommitDate/gitLog.png)
 
 Isto mostra o *commit* mais recente na branch `origin/main`, incluindo o *hash*, autor e data do *commit*.
 
@@ -718,7 +717,7 @@ Os testes para a funcionalidade do campo de email foram desenvolvidos na branch 
 
     git checkout email-field
 
-![git checkout email-field](img/emailFieldTests/WindowsTerminal_cpyCAoU1oa.png)
+![git checkout email-field](img/emailFieldTests/gitCheckout.png)
 
 Isto coloca o repositório no contexto da branch `email-field`, onde a implementação do recurso e os testes associados foram adicionados.
 
@@ -734,9 +733,9 @@ Após ajustar e adicionar os testes, os comandos seguintes foram usados para reg
     git commit -m "Added unit test for email field in Vet class. #10"
     git push -u origin email-field
 
-![git add .](img/emailFieldTests/WindowsTerminal_hCdA3IxHXO.png)
-![git commit -m "Added unit test for email field in Vet class. #10"](img/emailFieldTests/WindowsTerminal_M3dCgkvWya.png)
-![git push -u origin email-field](img/emailFieldTests/WindowsTerminal_BBAbhv8zj9.png)
+![git add .](img/emailFieldTests/gitAdd.png)
+![git commit -m "Added unit test for email field in Vet class. #10"](img/emailFieldTests/gitCommit.png)
+![git push -u origin email-field](img/emailFieldTests/gitPush.png)
 
 Isto faz **staging** de todas as alterações, cria um *commit* com os testes e envia a informação para a branch `email-field` no `remote` (origin).
 
@@ -747,8 +746,8 @@ Para marcar a versão associada às alterações e aos testes, foi criada uma ta
     git tag -a v1.3.0 -m "Release version 1.3.0"
     git push origin email-field v1.3.0
 
-![git tag -a v1.3.0 -m "Release version 1.3.0"](img/emailFieldTests/WindowsTerminal_M9R8mmNVHN.png)
-![git push origin email-field v1.3.0](img/emailFieldTests/WindowsTerminal_NtXCaj2VHm.png)
+![git tag -a v1.3.0 -m "Release version 1.3.0"](img/emailFieldTests/gitTag.png)
+![git push origin email-field v1.3.0](img/emailFieldTests/gitPushTag.png)
 
 O processo de criação e envio da tag é semelhante ao usado anteriormente, mas agora a tag é associada à branch `email-field`.
 
@@ -914,7 +913,7 @@ Para verificar que branches estão presentes no repositório Mercurial foi execu
 
     hg branches
 
-![hg branches](img/identifyDefaultBranchAndLatestCommit(Mercurial)/WindowsTerminal_TIVED3DB7S.png)
+![hg branches](img/identifyDefaultBranchAndLatestCommit(Mercurial)/hgBranches.png)
 
 Este comando lista as branches presentes no repositório.
 
@@ -928,7 +927,7 @@ Para recolher a data do último *commit* especificamente na branch `default` foi
 
     hg log -r "branch(default)" -l 1
 
-![hg log -r "branch(default)"](img/identifyDefaultBranchAndLatestCommit(Mercurial)/WindowsTerminal_hpzBzZcXt3.png)
+![hg log -r "branch(default)"](img/identifyDefaultBranchAndLatestCommit(Mercurial)/hgLogDefault.png)
 
 Isto retorna o registro do commit mais recente cuja branch é `default`, incluindo utilizador, data e mensagem.
 
@@ -944,7 +943,7 @@ Para comparar com a atividade global do repositório, obteve-se também o últim
 
     hg log -l 1
 
-![hg log -l 1](img/identifyDefaultBranchAndLatestCommit(Mercurial)/WindowsTerminal_QNhsUbecOj.png)
+![hg log -l 1](img/identifyDefaultBranchAndLatestCommit(Mercurial)/hgLog.png)
 
 No caso em análise, o último *commit* do repositório pertencia à branch `1:8429072951db` (ou seja, não estava na `default`).
 
