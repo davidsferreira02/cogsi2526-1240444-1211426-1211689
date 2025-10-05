@@ -477,11 +477,13 @@ Por fim, o *commit* de reversão foi enviado para o repositório remoto:
 
 ### 6º Passo - Verificação da reversão
 
-    Para confirmar que a reversão foi bem-sucedida, foi executado o comando:
+Para confirmar que a reversão foi bem-sucedida, foi executado o comando:
 
     git log origin/main -1
 
-![git log origin/main -1 final verification](img/revertCommit/WindowsTerminal_PN6pfFx9Ad.png)Isto mostrou o *commit* mais recente na branch `origin/main`, que deveria ser o *commit* de reversão, confirmando que a alteração incorreta foi desfeita.
+![git log origin/main -1 final verification](img/revertCommit/gitLogRevertCommit.png)
+
+Isto mostrou o *commit* mais recente na branch `origin/main`, que deveria ser o *commit* de reversão, confirmando que a alteração incorreta foi desfeita.
 
 ## Issue 6 - Identify default branch and latest commit date
 
@@ -905,51 +907,6 @@ Por fim, podemos facilmente validar se a aplicação está operacional colocando
 
 ![Validação da implementação Mercurial](img/mercuria1stCommit/appvalidation.png "Issue 13")
 
-## Issue 17 - Identify default branch and latest commit date (Mercurial)
-
-### 1º Passo - Listar branches existentes
-
-Para verificar que branches estão presentes no repositório Mercurial foi executado:
-
-    hg branches
-
-![hg branches](img/identifyDefaultBranchAndLatestCommit(Mercurial)/hgBranches.png)
-
-Este comando lista as branches presentes no repositório.
-
-### 2º Passo - Observação sobre a branch `default` no Mercurial
-
-Ao contrário do Git, onde a branch principal costuma chamar-se `main` ou `master`, no Mercurial a branch default chama-se efetivamente `default`. Assim, quando se pretende consultar a última atividade na branch principal, usamos o nome `default` nas queries do `hg`.
-
-### 3º Passo - Obter o último commit na branch `default`
-
-Para recolher a data do último *commit* especificamente na branch `default` foi executado:
-
-    hg log -r "branch(default)" -l 1
-
-![hg log -r "branch(default)"](img/identifyDefaultBranchAndLatestCommit(Mercurial)/hgLogDefault.png)
-
-Isto retorna o registro do commit mais recente cuja branch é `default`, incluindo utilizador, data e mensagem.
-
-Explicação do comando:
-
-- `log` — mostra o histórico de commits.
-- `-r "branch(default)"` — revset que seleciona todas as revisões pertencentes à branch chamada `default`. As aspas evitam que o shell interprete parênteses ou espaços.
-- `-l 1` — limita a saída a 1 entrada; combinado com a ordem padrão do `hg log` (inversamente por data) isto retorna o commit mais recente dessa branch.
-
-### 4º Passo - Obter o último commit no repositório inteiro
-
-Para comparar com a atividade global do repositório, obteve-se também o último *commit* em todo o repositório usando:
-
-    hg log -l 1
-
-![hg log -l 1](img/identifyDefaultBranchAndLatestCommit(Mercurial)/hgLog.png)
-
-No caso em análise, o último *commit* do repositório pertencia à branch `1:8429072951db` (ou seja, não estava na `default`).
-
-
-
-
 #### Issue 16 - View and customize commit history
 
 O Mercurial oferece diversas opções para visualizar e personalizar o histórico de commits através do comando `hg log`. Foram exploradas as seguintes variações equivalentes às do Git:
@@ -998,6 +955,50 @@ Mostra o histórico em formato de árvore, útil para visualizar branches e merg
 ![hg log graph output](img/commitHistory/mercurial/hgLogGraph.png)
 
 
+
+## Issue 17 - Identify default branch and latest commit date (Mercurial)
+
+### 1º Passo - Listar branches existentes
+
+Para verificar que branches estão presentes no repositório Mercurial foi executado:
+
+    hg branches
+
+![hg branches](img/identifyDefaultBranchAndLatestCommit(Mercurial)/hgBranches.png)
+
+Este comando lista as branches presentes no repositório.
+
+### 2º Passo - Observação sobre a branch `default` no Mercurial
+
+Ao contrário do Git, onde a branch principal costuma chamar-se `main` ou `master`, no Mercurial a branch default chama-se efetivamente `default`. Assim, quando se pretende consultar a última atividade na branch principal, usamos o nome `default` nas queries do `hg`.
+
+### 3º Passo - Obter o último commit na branch `default`
+
+Para recolher a data do último *commit* especificamente na branch `default` foi executado:
+
+    hg log -r "branch(default)" -l 1
+
+![hg log -r "branch(default)"](img/identifyDefaultBranchAndLatestCommit(Mercurial)/hgLogDefault.png)
+
+Isto retorna o registro do commit mais recente cuja branch é `default`, incluindo utilizador, data e mensagem.
+
+Explicação do comando:
+
+- `log` — mostra o histórico de commits.
+- `-r "branch(default)"` — revset que seleciona todas as revisões pertencentes à branch chamada `default`. As aspas evitam que o shell interprete parênteses ou espaços.
+- `-l 1` — limita a saída a 1 entrada; combinado com a ordem padrão do `hg log` (inversamente por data) isto retorna o commit mais recente dessa branch.
+
+### 4º Passo - Obter o último commit no repositório inteiro
+
+Para comparar com a atividade global do repositório, obteve-se também o último *commit* em todo o repositório usando:
+
+    hg log -l 1
+
+![hg log -l 1](img/identifyDefaultBranchAndLatestCommit(Mercurial)/hgLog.png)
+
+No caso em análise, o último *commit* do repositório pertencia à branch `1:8429072951db` (ou seja, não estava na `default`).
+
+
 #### Issue 18 - Count distinct contributors in the repository
 
 Para verificarmos os diferentes contribuintes do repositório, podemos utilizar a extensão *chern*. Esta serve para contar as linhas alteradas no repositório por cada utilizador. Antes de se executar o comando é necessário importar a extensão, fazendos as seguintes alterações no ficheiro ***hgrc***:
@@ -1022,7 +1023,7 @@ Analisando o *output* podemos ver que, aquando da execução do comando, apenas 
 
 No Mercurial, a criação de branches segue uma abordagem ligeiramente diferente do Git, mas permite o mesmo isolamento de funcionalidades para desenvolvimento paralelo.
 
-##### 1º Passo - Criar uma nova branch para o desenvolvimento do campo email
+##### 1º Passo - Criar uma nova branch no Mercurial para o desenvolvimento do campo email
 
 Para implementar a funcionalidade de email para os veterinários no repositório Mercurial, foi criada uma nova branch específica para esta tarefa:
 
@@ -1036,7 +1037,7 @@ Este comando:
 
 ![Email Field Branch Creation Mercurial](img/email-field_branch/mercurial/Email-Field_Branch_Creation.png)
 
-##### 2º Passo - Verificar a criação da branch
+##### 2º Passo - Verificar a criação da branch no Mercurial
 
 Para confirmar que a branch foi definida corretamente:
 
