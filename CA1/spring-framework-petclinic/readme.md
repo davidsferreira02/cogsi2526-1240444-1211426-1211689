@@ -1018,7 +1018,6 @@ Como podemos observar, foi acrescentada a secção ***extensions*** e colocado d
 
 Analisando o *output* podemos ver que, aquando da execução do comando, apenas um utilizador fez alterações ao repositório.
 
-
 #### Issue 19 - Create a branch named email-field
 
 No Mercurial, a criação de branches segue uma abordagem ligeiramente diferente do Git, mas permite o mesmo isolamento de funcionalidades para desenvolvimento paralelo.
@@ -1105,3 +1104,90 @@ A criação de uma branch específica no Mercurial oferece as mesmas vantagens q
 6. **Finalizar**: `hg commit -m "Merge feature-name"`
 
 Esta abordagem garante um desenvolvimento organizado e controlado, mantendo a integridade do código principal enquanto permite a implementação paralela de novas funcionalidades.
+
+#### Issue 22 - Create & Solve Merge conflicts
+
+Tal como num repositório *git*, para se proceder à criação e resolução de conflitos de *merge* é necessário criar-se um branch adicional para além do *default* e fazerem-se alterações no mesmo ficheiro em ambos os *branches*. Para se criar um *branch* utiliza-se o comando ***hg brunch ´nome do branch´***, neste caso o nome escolhido para o branch foi *merge conflict*.
+
+        nacunha@cogsi:/mnt/hgfs/Shared/project$ hg branch merge_conflict
+        marked working directory as branch merge_conflict
+        (branches are permanent and global, did you want a bookmark?)
+        nacunha@cogsi:/mnt/hgfs/Shared/project$ sudo hg branch
+        merge_conflict
+
+De seguida, fez-se alterações a um ficheiro de texto chamado *filename.txt*, que foi adicionado ao repositório no *commit* inicial, e foi feito o commit destas mesmas alterações e o envio para o repositório remoto. De notar, que foi necessário fazer *push* do novo *branch* utilizando o comando *hg push --new-branch" que é usado apenas quando o *branch* ainda não foi criado no repositório remoto.
+
+Para a criação de conflitos voltou-se novamente ao *branch default* e fez-se alterações no mesmo ficheiro.
+
+        nacunha@cogsi:/mnt/hgfs/Shared/project$ hg update default 
+        1 files updated, 0 files merged, 0 files removed, 0 files unresolved
+        nacunha@cogsi:/mnt/hgfs/Shared/project$ hg branch
+        default
+        nacunha@cogsi:/mnt/hgfs/Shared/project$ 
+
+Posto isto, tendo alterações em ambos os *branches* passamos a fazer o *merge*. A lógica é semelhante ao *git*, devemos executar o comando para se fazer o *merge* no *branch* no qual queremos que as mudanças sejam acrescentadas, para isso utiliza-se o comando ***hg merge merge_conflict***. Dado que existem conflitos foi automaticamente colocado no terminal os ficheiros onde estes existiam sendo assim necessário criar uma versão final à semelhança do que acontece no *git*. Neste caso, o *Mercurial* disponibiliza uma ferramenta onde estão presentes três colunas:
+    
+1. ***filename.txt*** (coluna mais à esquerda): Esta é a versão resultante do *merge*, ou seja, o ficheiro onde devem ser feitas as edições para resolver os conflitos
+2. ***filename~other.txt*** (coluna do meio): versão do *branch* criado, neste caso, a versão do *branch merge_conflict*.
+2. ***filename~base.txt*** (coluna mais à direita): esta é a última versão comum aos *branches*, ou seja, e versão do ficheiro antes do *branch merge_conflict* ter sido criado.
+
+![Merge Conflict Built in Tool - Mercurial ](img\solveMergeConflict_Mercurial\merge_conflict_tool.png)
+
+Podemos validar todo este processo com o comando ***hg log --graph***, que cria uma árvore de *commits* à semelhança do *git*.
+
+        nacunha@cogsi:/mnt/hgfs/Shared/project$ hg log --graph
+        @    changeset:   8:870cad8d3a6e
+        |\   tag:         tip
+        | |  parent:      7:327eabaab106
+        | |  parent:      6:d93afb10c54c
+        | |  user:        NunoCunha43 <1211689@isep.ipp.pt>
+        | |  date:        Sun Oct 05 13:38:15 2025 +0000
+        | |  summary:     Merge Conflict final versionXy
+        | |
+        | o  changeset:   7:327eabaab106
+        | |  parent:      5:ecc1007bd8d7
+        | |  user:        NunoCunha43 <1211689@isep.ipp.pt>
+        | |  date:        Sun Oct 05 13:21:15 2025 +0000
+        | |  summary:     HOT FIX
+        | |
+        o |  changeset:   6:d93afb10c54c
+        | |  branch:      merge_conflict
+        | |  parent:      3:c2531c953819
+        | |  user:        NunoCunha43 <1211689@isep.ipp.pt>
+        | |  date:        Sun Oct 05 13:19:57 2025 +0000
+        | |  summary:     HOT FIX
+        | |
+        | o  changeset:   5:ecc1007bd8d7
+        |/|  parent:      4:d749885f76b8
+        | |  parent:      3:c2531c953819
+        | |  user:        NunoCunha43 <1211689@isep.ipp.pt>
+        | |  date:        Sun Oct 05 13:05:06 2025 +0000
+        | |  summary:     #22 - Merge conflict fixed
+        | |
+        | o  changeset:   4:d749885f76b8
+        | |  parent:      2:5d2ced4ad236
+        | |  user:        NunoCunha43 <1211689@isep.ipp.pt>
+        | |  date:        Sun Oct 05 12:23:56 2025 +0000
+        | |  summary:     #22 - Merge Conflict default branch commit
+        | |
+        o |  changeset:   3:c2531c953819
+        |/   branch:      merge_conflict
+        |    user:        NunoCunha43 <1211689@isep.ipp.pt>
+        |    date:        Sun Oct 05 11:57:58 2025 +0000
+        |    summary:     #22 - Branch criado e alterações a ficheiro texto feitas
+        |
+        o  changeset:   2:5d2ced4ad236
+        |  user:        NunoCunha43 <1211689@isep.ipp.pt>
+        |  date:        Sat Oct 04 18:48:26 2025 +0000
+        |  summary:     Testes para feature do email adicionados
+        |
+        o  changeset:   1:8429072951db
+        |  user:        NunoCunha43 <1211689@isep.ipp.pt>
+        |  date:        Sat Oct 04 01:34:40 2025 +0000
+        |  summary:     Application Commit
+        |
+        o  changeset:   0:9820ac935a9f
+           user:        NunoCunha43 <1211689@isep.ipp.pt>
+           date:        Sat Oct 04 00:42:46 2025 +0000
+           summary:     Inital Commit for Mercurial Repo implementation
+        
