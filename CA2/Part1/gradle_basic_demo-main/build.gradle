@@ -51,3 +51,8 @@ task runClient(type:JavaExec, dependsOn: classes){
 
     args 'localhost', '59001'
 }
+
+task backup(type: Copy) {
+    from 'src'
+    into 'backup'
+}
