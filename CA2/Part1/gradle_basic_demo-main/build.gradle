@@ -57,11 +57,13 @@ task backup(type: Copy) {
     into 'backup'
 }
 
-task runServer(type:JavaExec, dependsOn: build){
+task runServer(type:JavaExec){
     group = "COGSI"
 
-    description = "Task that starts the Chat Server"
+    description = "Task that starts the Chat App"
   
+    dependsOn build
+
     classpath = sourceSets.main.runtimeClasspath
 
     mainClass = 'basic_demo.ChatServerApp'
