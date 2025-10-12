@@ -53,6 +53,9 @@ task runClient(type:JavaExec, dependsOn: classes){
 }
 
 task backup(type: Copy) {
+    group = "COGSI"
+    description = "Copies the src directory to a backup directory"
+
     from 'src'
     into 'backup'
 }
