@@ -80,3 +80,63 @@ Tendo já sido criada a *task* resta testar o seu funcionamento utilizando o com
         The chat server is running...
         
 Como é possível observar no *output* anterior, o código foi totalmente compilado e está operacional, dado que o output foi igual ao obtido quando utilizados os comandos individuais de *build* e execução.
+
+## Issue 25 - Add Gradle task backup to copy src to backup/
+
+Este *issue* descreve a adição de uma *task* Gradle que utiliza o tipo embutido `Copy` para criar uma cópia da pasta `src` para uma nova pasta `backup/` no diretório do projeto. O objetivo é fornecer uma forma rápida e reproduzível de criar uma cópia de segurança dos ficheiros fonte.
+
+Explicação da tarefa:
+
+1. Foi adicionada uma *task* chamada `backup` no ficheiro `build.gradle` com o tipo `Copy`.
+2. A *task* copia todo o conteúdo da pasta `src` para uma pasta `backup` na raiz do projeto usando as propriedades `from` e `into`.
+3. A task é intencionalmente simples e determinística: pode ser executada localmente sem dependências adicionais e pode ser encadeada noutras tasks (por exemplo `backupZip` no mesmo ficheiro) usando `dependsOn`.
+
+Trecho relevante do `build.gradle` (implementação da *task*):
+
+                task backup(type: Copy) {
+                        group = "COGSI"
+                        description = "Copies the src directory to a backup directory"
+
+                        from 'src'
+                        into 'backup'
+                }
+
+Partes mais importantes da implementação da task `backup`:
+
+- `task backup(type: Copy)`: declara a task usando o tipo built-in `Copy`, que fornece comportamento padrão de cópia com suporte a estruturas de pastas, filtros e performance do Gradle.
+- `group = "COGSI"`: organiza a task no grupo `COGSI` para facilitar a descoberta ao listar tasks (`./gradlew tasks`).
+- `description = "Copies the src directory to a backup directory"`: fornece uma descrição legível que aparece nas listagens de tasks e ajuda na documentação.
+- `from 'src'`: especifica a origem da cópia — toda a árvore de ficheiros em `src` será incluída.
+- `into 'backup'`: define o destino da cópia; a pasta `backup/` será criada se não existir e a estrutura interna será preservada.
+
+Como verificar (passos executados):
+
+1. Mudar para o directório do projecto onde se encontra o `build.gradle`.
+
+        ```bash
+        cd /path/to/gradle_basic_demo-main
+        ```
+
+2. Executar a task `backup`:
+
+        ```bash
+        ./gradlew backup
+        ```
+
+3. Verificar que a pasta `backup/` foi criada e que contém uma cópia do conteúdo de `src` (p. ex. `src/main` aparece em `backup/main`):
+
+        ```bash
+        ls -la backup
+        ```
+
+Exemplo de output observado durante a verificação realizada neste trabalho:
+
+        > Task :backup
+
+        BUILD SUCCESSFUL in 11s
+        1 actionable task: 1 executed
+
+        total 12
+        drwxr-xr-x 3 rafael rafael 4096 Oct 12 17:20 .
+        drwxr-xr-x 7 rafael rafael 4096 Oct 12 18:49 ..
+        drwxr-xr-x 4 rafael rafael 4096 Oct 12 17:20 main
