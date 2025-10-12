@@ -57,6 +57,17 @@ task backup(type: Copy) {
     into 'backup'
 }
 
+task backupZip(type: Zip) {
+    group = "DevOps"
+    description = "Creates a zip archive of the backup"
+    
+    dependsOn backup
+    
+    from 'backup'
+    archiveFileName = 'backup.zip'
+    destinationDirectory = file('.')
+}
+
 task runServer(type:JavaExec){
     group = "COGSI"
 
