@@ -80,3 +80,74 @@ Tendo já sido criada a *task* resta testar o seu funcionamento utilizando o com
         The chat server is running...
         
 Como é possível observar no *output* anterior, o código foi totalmente compilado e está operacional, dado que o output foi igual ao obtido quando utilizados os comandos individuais de *build* e execução.
+
+## Issue 25 - Add a unit test and enable Gradle test execution
+
+Para implementar os testes, foi necessário criar uma pasta dedicada, com uma estrutura semelhante à da pasta que contém o código-fonte da aplicação. Posteriormente, foi criada uma classe de testes correspondente a cada classe do domínio. Neste caso, como o objetivo é apenas demonstrar a interligação entre uma *task* e a execução de testes, foi criada apenas uma classe de teste que valida uma funcionalidade simples.
+
+        package basic_demo;
+
+        import org.junit.jupiter.api.Test;
+        import static org.junit.jupiter.api.Assertions.*;
+
+        public class ChatClientTest {
+
+            @Test
+            void testChatClientCreation() {
+                ChatClient client = new ChatClient("localhost", 59001);
+                assertNotNull(client, "ChatClient Created with Success");
+            }
+        }
+
+Tendo sido o teste criado é necessário, de seguida, editar o ficheiro *build.gradle* e criar-se a *task* que executará os testes, bem como, adicionar-se os módulos necessários às dependências do projeto.
+
+Relativamente às dependências do projeto, foram adicionadas as últimas duas linhas do código abaixo. Estas tratam de adicionar às dependências todos os módulos relativos ao ***junit***, na versão 5.10.
+
+        dependencies {
+            // Use Apache Log4J for logging
+            implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.11.2'
+            implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.11.2'
+            testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
+            testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.0'
+        }
+
+Observando agora a *task* criada:
+
+        task testChatClient(type: Test) {
+            group = "COGSI"                          
+            description = "Executa apenas o teste da classe ChatClient"
+            dependsOn build                          
+
+            useJUnitPlatform()                       
+
+            testClassesDirs = sourceSets.test.output.classesDirs  
+        
+            classpath = sourceSets.test.runtimeClasspath          
+
+            include '**/ChatClientTest.class'        
+        }
+
+Analisando linha a linha, pode-se afirmar o seguinte:
+1. A task é do tipo Test, o que significa que será responsável pela execução dos testes, neste caso, utilizando o JUnit.
+2. Tal como no *issue* anterior, é-lhe atribuído o grupo COGSI, uma descrição coerente com a sua função e definida uma dependência em relativamente ao sucesso do *build* do projeto.
+3. Ao ser utilizado o método ***useJUnitPlatform()*** indica será utilizado a versão 5 do *junit*.
+4. As três últimas linhas indicam o caminho das classes de teste, das dependências e, por fim, neste caso, filtra a execução apenas ao teste criado anteriormente.
+
+Posto isto, para correr a *task* é necessário correr o comando ***./gradlew testChatClient***, é importante sublinhar que é necessário correr este teste numa máquina com ambiente gráfico, por isso, de forma excecional a task foi corrida numa máquina *Windows*.
+
+        PS C:\Shared\cogsi2526-1240444-1211426-1211689\CA2\Part1\gradle_basic_demo-main> ./gradlew testChatClient
+        > Task :compileJava UP-TO-DATE
+        > Task :processResources UP-TO-DATE
+        > Task :classes UP-TO-DATE
+        > Task :compileTestJava UP-TO-DATE
+        > Task :processTestResources NO-SOURCE
+        > Task :testClasses UP-TO-DATE
+        > Task :testChatClient UP-TO-DATE
+
+        BUILD SUCCESSFUL in 1s
+        4 actionable tasks: 4 up-to-date
+
+Para além de conseguirmos ver que todo o build foi sucedido, podemos ainda verificar um ficheiro HTML criado automaticamente onde temos toda a informação relativa ao resultado dos testes, como revela a seguinte imagem.
+
+![Resultado dos Testes](img\taskTest.png)
+
