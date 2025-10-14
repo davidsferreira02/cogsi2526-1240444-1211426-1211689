@@ -57,15 +57,28 @@ task backup(type: Copy) {
     into 'backup'
 }
 
-task backupZip(type: Zip) {
+// Issue 27 - zipBackup task creates a zip from the backup directory ensuring backup runs first
+task zipBackup(type: Zip) {
     group = "DevOps"
-    description = "Creates a zip archive of the backup"
-    
+    description = "Creates a zip archive of the backup directory (depends on backup)"
+
     dependsOn backup
-    
+
     from 'backup'
     archiveFileName = 'backup.zip'
     destinationDirectory = file('.')
+}
+
+// Issue 28 - Helper task to print resolved Java toolchain details (for documentation)
+tasks.register('javaToolchain') {
+    group = "Help"
+    description = "Prints information about the configured Java toolchain"
+    doLast {
+        println "Java Toolchain (languageVersion): ${java.toolchain.languageVersion.get()}"
+        println "Current JVM version: ${System.getProperty('java.version')}"
+        println "Gradle version: ${gradle.gradleVersion} (Wrapper governs this)"
+        println "JAVA_HOME: ${System.getenv('JAVA_HOME')}"
+    }
 }
 
 task runServer(type:JavaExec){
