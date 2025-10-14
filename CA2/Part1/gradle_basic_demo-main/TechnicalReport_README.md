@@ -140,3 +140,106 @@ Exemplo de output observado durante a verificação realizada neste trabalho:
         drwxr-xr-x 3 rafael rafael 4096 Oct 12 17:20 .
         drwxr-xr-x 7 rafael rafael 4096 Oct 12 18:49 ..
         drwxr-xr-x 4 rafael rafael 4096 Oct 12 17:20 main
+
+## Issue 27 - Adicionar task zipBackup (tipo Zip)
+
+Objetivo: Criar um ficheiro `backup.zip` contendo uma cópia da árvore de fontes (`src/`). Para garantir que o conteúdo está atualizado, a nova task deve depender da task `backup` (que copia `src` para a pasta `backup/`).
+
+Implementação adicionada ao `build.gradle`:
+
+```gradle
+task backup(type: Copy) {
+        from 'src'
+        into 'backup'
+}
+
+task zipBackup(type: Zip) {
+        group = "DevOps"
+        description = "Creates a zip archive of the backup directory (depends on backup)"
+        dependsOn backup
+        from 'backup'
+        archiveFileName = 'backup.zip'
+        destinationDirectory = file('.')
+}
+```
+
+Explicação técnica:
+1. `type: Copy` na task `backup` garante a duplicação simples dos ficheiros (mantendo estrutura relativa) antes da compressão.
+2. `type: Zip` na task `zipBackup` usa o mecanismo interno do Gradle para agregação de ficheiros num artefacto `.zip`.
+3. `dependsOn backup` cria uma aresta explícita no grafo de execução assegurando que a origem (`backup/`) está pronta.
+4. `from 'backup'` define a raiz a arquivar; não usamos diretamente `src/` para manter a intencionalidade de uma cópia congelada.
+5. `destinationDirectory = file('.')` coloca o artefacto no diretório do projeto (poderia ser `build/distributions` se quiséssemos isolar outputs).
+
+Execução:
+```
+./gradlew zipBackup
+```
+
+Output observado:
+```
+> Task :backup UP-TO-DATE
+> Task :zipBackup
+
+BUILD SUCCESSFUL in 2s
+2 actionable tasks: 1 executed, 1 up-to-date
+```
+
+Artefactos resultantes:
+* Diretoria `backup/`
+* Ficheiro `backup.zip`
+
+Imagem de suporte (execução da task):
+
+![Execução da task zipBackup](img/zip/gradlew_backupZip.png)
+
+## Issue 28 - Explicar Gradle Wrapper e JDK Toolchain
+
+Requisitos: Demonstrar como o *Gradle Wrapper* e a *Java Toolchain* asseguram versões consistentes (Gradle 8.9 + Java 17) sem necessidade de instalações manuais divergentes.
+
+Configuração existente no `build.gradle`:
+```gradle
+java {
+        toolchain {
+                languageVersion = JavaLanguageVersion.of(17)
+        }
+}
+```
+
+Foi ainda criada uma task auxiliar para recolher informação de diagnóstico:
+```gradle
+tasks.register('javaToolchain') {
+        group = "Help"
+        description = "Prints information about the configured Java toolchain"
+        doLast {
+                println "Java Toolchain (languageVersion): ${java.toolchain.languageVersion.get()}"
+                println "Current JVM version: ${System.getProperty('java.version')}"
+                println "Gradle version: ${gradle.gradleVersion} (Wrapper governs this)"
+                println "JAVA_HOME: ${System.getenv('JAVA_HOME')}"
+        }
+}
+```
+
+Execução silenciosa:
+```
+./gradlew -q javaToolchain
+```
+
+Output recolhido (exemplo):
+```
+Java Toolchain (languageVersion): 17
+Current JVM version: 17.0.14
+Gradle version: 8.9 (Wrapper governs this)
+JAVA_HOME: /Users/<user>/.sdkman/candidates/java/current
+```
+
+Análise:
+1. O Wrapper (`gradlew`) descarrega / utiliza a distribuição exata de Gradle definida em `gradle/wrapper/gradle-wrapper.properties`, evitando discrepâncias de versões entre máquinas.
+2. A *toolchain* declara a versão alvo de Java (17). O Gradle tenta localizar internamente um JDK compatível; quando configurado com *provisioning*, pode mesmo descarregar (dependendo das features usadas).
+3. A compilação fica isolada de *overrides* acidentais do `JAVA_HOME` ou de JDKs mais recentes/antigos disponíveis localmente.
+4. Em CI/CD basta chamar `./gradlew build`, reduzindo fricção operacional.
+
+![Gradle Wrapper & Toolchain (Parte 1)](img/gradle_wrapper&jdk_toolchain/gradlewOutputPart1.png)
+![Gradle Wrapper & Toolchain (Parte 2)](img/gradle_wrapper&jdk_toolchain/gradlewOutputPart2.png)
+
+A combinação Wrapper + Toolchain aumenta reprodutibilidade, reduz *onboarding time* e minimiza falhas introduzidas por ambientes heterogéneos.
+
