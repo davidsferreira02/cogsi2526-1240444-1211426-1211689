@@ -1,4 +1,5 @@
 # Technical Report CA02
+
 Technical report do CA02 no âmbito da UC de COGSI realizado por:
 
 1. David Ferreira - 1240444
@@ -8,7 +9,7 @@ Technical report do CA02 no âmbito da UC de COGSI realizado por:
 ## Issue 24 - Add custom Gradle task runServer
 
 Em primeiro lugar, é necessário compreender o que deve ser feito para colocar o módulo da app em execução. Para isso, é preciso fazer o *build* do projeto e executar o comando ***java -cp build/libs/basic_demo-0.1.0.jar basic_demo.ChatServerApp "server port"***, conforme indicado no ficheiro README.
-Este comando serve para indicar qual o método main que deve ser executado e para definir os argumentos necessários ao seu funcionamento. 
+Este comando serve para indicar qual o método main que deve ser executado e para definir os argumentos necessários ao seu funcionamento.
 
         nacunha@cogsi$ ./gradlew build
         > Task :compileJava UP-TO-DATE
@@ -59,7 +60,7 @@ Analisando a mesma por linhas, podemos observar o seguinte:
 6. A variável ***mainClass*** indica ao *Gradle* qual a classe que contém o método *main* a ser executado sendo-lhes passados os parâmetros necessários, sendo neste caso apenas o porto onde deve ser executada a aplicação.
 
 Tendo já sido criada a *task* resta testar o seu funcionamento utilizando o comando ***./gradlew runServer***.
-        
+
         nacunha@cogsi$ ./gradlew runServer
         > Task :compileJava UP-TO-DATE
         > Task :processResources UP-TO-DATE
@@ -81,7 +82,6 @@ Tendo já sido criada a *task* resta testar o seu funcionamento utilizando o com
         
 Como é possível observar no *output* anterior, o código foi totalmente compilado e está operacional, dado que o output foi igual ao obtido quando utilizados os comandos individuais de *build* e execução.
 
-<<<<<<< HEAD
 ## Issue 25 - Add a unit test and enable Gradle test execution
 
 Para implementar os testes, foi necessário criar uma pasta dedicada, com uma estrutura semelhante à da pasta que contém o código-fonte da aplicação. Posteriormente, foi criada uma classe de testes correspondente a cada classe do domínio. Neste caso, como o objetivo é apenas demonstrar a interligação entre uma *task* e a execução de testes, foi criada apenas uma classe de teste que valida uma funcionalidade simples.
@@ -129,6 +129,7 @@ Observando agora a *task* criada:
         }
 
 Analisando linha a linha, pode-se afirmar o seguinte:
+
 1. A task é do tipo Test, o que significa que será responsável pela execução dos testes, neste caso, utilizando o JUnit.
 2. Tal como no *issue* anterior, é-lhe atribuído o grupo COGSI, uma descrição coerente com a sua função e definida uma dependência em relativamente ao sucesso do *build* do projeto.
 3. Ao ser utilizado o método ***useJUnitPlatform()*** indica será utilizado a versão 5 do *junit*.
@@ -151,7 +152,7 @@ Posto isto, para correr a *task* é necessário correr o comando ***./gradlew te
 Para além de conseguirmos ver que todo o build foi sucedido, podemos ainda verificar um ficheiro HTML criado automaticamente onde temos toda a informação relativa ao resultado dos testes, como revela a seguinte imagem.
 
 ![Resultado dos Testes](img\taskTest.png)
-=======
+
 ## Issue 25 - Add Gradle task backup to copy src to backup/
 
 Este *issue* descreve a adição de uma *task* Gradle que utiliza o tipo embutido `Copy` para criar uma cópia da pasta `src` para uma nova pasta `backup/` no diretório do projeto. O objetivo é fornecer uma forma rápida e reproduzível de criar uma cópia de segurança dos ficheiros fonte.
@@ -218,6 +219,19 @@ Objetivo: Criar um ficheiro `backup.zip` contendo uma cópia da árvore de fonte
 
 Implementação adicionada ao `build.gradle`:
 
+    task backup(type: Copy) {
+            from 'src'
+            into 'backup'
+    }
+
+    task zipBackup(type: Zip) {
+            group = "DevOps"
+            description = "Creates a zip archive of the backup directory (depends on backup)"
+            dependsOn backup
+            from 'backup'
+            archiveFileName = 'backup.zip'
+            destinationDirectory = file('.')
+    }
 ```gradle
 task backup(type: Copy) {
         from 'src'
@@ -235,6 +249,7 @@ task zipBackup(type: Zip) {
 ```
 
 Explicação técnica:
+
 1. `type: Copy` na task `backup` garante a duplicação simples dos ficheiros (mantendo estrutura relativa) antes da compressão.
 2. `type: Zip` na task `zipBackup` usa o mecanismo interno do Gradle para agregação de ficheiros num artefacto `.zip`.
 3. `dependsOn backup` cria uma aresta explícita no grafo de execução assegurando que a origem (`backup/`) está pronta.
@@ -242,11 +257,13 @@ Explicação técnica:
 5. `destinationDirectory = file('.')` coloca o artefacto no diretório do projeto (poderia ser `build/distributions` se quiséssemos isolar outputs).
 
 Execução:
+
 ```
 ./gradlew zipBackup
 ```
 
 Output observado:
+
 ```
 > Task :backup UP-TO-DATE
 > Task :zipBackup
@@ -256,8 +273,8 @@ BUILD SUCCESSFUL in 2s
 ```
 
 Artefactos resultantes:
-* Diretoria `backup/`
-* Ficheiro `backup.zip`
+- Diretoria `backup/`
+- Ficheiro `backup.zip`
 
 Imagem de suporte (execução da task):
 
@@ -268,6 +285,7 @@ Imagem de suporte (execução da task):
 Requisitos: Demonstrar como o *Gradle Wrapper* e a *Java Toolchain* asseguram versões consistentes (Gradle 8.9 + Java 17) sem necessidade de instalações manuais divergentes.
 
 Configuração existente no `build.gradle`:
+
 ```gradle
 java {
         toolchain {
@@ -277,6 +295,7 @@ java {
 ```
 
 Foi ainda criada uma task auxiliar para recolher informação de diagnóstico:
+
 ```gradle
 tasks.register('javaToolchain') {
         group = "Help"
@@ -291,11 +310,13 @@ tasks.register('javaToolchain') {
 ```
 
 Execução silenciosa:
+
 ```
 ./gradlew -q javaToolchain
 ```
 
 Output recolhido (exemplo):
+
 ```
 Java Toolchain (languageVersion): 17
 Current JVM version: 17.0.14
@@ -304,6 +325,7 @@ JAVA_HOME: /Users/<user>/.sdkman/candidates/java/current
 ```
 
 Análise:
+
 1. O Wrapper (`gradlew`) descarrega / utiliza a distribuição exata de Gradle definida em `gradle/wrapper/gradle-wrapper.properties`, evitando discrepâncias de versões entre máquinas.
 2. A *toolchain* declara a versão alvo de Java (17). O Gradle tenta localizar internamente um JDK compatível; quando configurado com *provisioning*, pode mesmo descarregar (dependendo das features usadas).
 3. A compilação fica isolada de *overrides* acidentais do `JAVA_HOME` ou de JDKs mais recentes/antigos disponíveis localmente.
@@ -313,5 +335,25 @@ Análise:
 ![Gradle Wrapper & Toolchain (Parte 2)](img/gradle_wrapper&jdk_toolchain/gradlewOutputPart2.png)
 
 A combinação Wrapper + Toolchain aumenta reprodutibilidade, reduz *onboarding time* e minimiza falhas introduzidas por ambientes heterogéneos.
->>>>>>> c35187ef4ebfeb1cad75034c025785a28534a2d3
 
+## Issue 32 - Custom Gradle task deployToDev
+
+Objetivo: criar uma pipeline de deployment local (DEV) usando apenas tasks built-in do Gradle, com os seguintes passos em sequência:
+
+- Delete: limpar a diretoria de deployment (`build/deployment/dev`).
+- Copy: copiar o artefacto principal (JAR) para `build/deployment/dev`.
+- Copy: copiar apenas as dependências de runtime (JARs) para `build/deployment/dev/lib`.
+- Copy + ReplaceTokens: copiar ficheiros `src/main/resources/*.properties` para `build/deployment/dev`, aplicando substituição de tokens (`@projectVersion@` e `@buildTimestamp@`).
+
+Comando executado e validação:
+
+```bash
+./gradlew -q deployToDev
+ls -la build/deployment/dev
+echo '--- lib ---'
+ls -la build/deployment/dev/lib
+```
+
+Output observado:
+
+![Output of ./gradlew -q deployToDev](img/deployToDev/outputGradlew.png)
