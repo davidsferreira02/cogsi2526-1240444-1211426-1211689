@@ -81,7 +81,7 @@ Tendo já sido criada a *task* resta testar o seu funcionamento utilizando o com
         
 Como é possível observar no *output* anterior, o código foi totalmente compilado e está operacional, dado que o output foi igual ao obtido quando utilizados os comandos individuais de *build* e execução.
 
-<<<<<<< HEAD
+
 ## Issue 25 - Add a unit test and enable Gradle test execution
 
 Para implementar os testes, foi necessário criar uma pasta dedicada, com uma estrutura semelhante à da pasta que contém o código-fonte da aplicação. Posteriormente, foi criada uma classe de testes correspondente a cada classe do domínio. Neste caso, como o objetivo é apenas demonstrar a interligação entre uma *task* e a execução de testes, foi criada apenas uma classe de teste que valida uma funcionalidade simples.
@@ -313,5 +313,28 @@ Análise:
 ![Gradle Wrapper & Toolchain (Parte 2)](img/gradle_wrapper&jdk_toolchain/gradlewOutputPart2.png)
 
 A combinação Wrapper + Toolchain aumenta reprodutibilidade, reduz *onboarding time* e minimiza falhas introduzidas por ambientes heterogéneos.
->>>>>>> c35187ef4ebfeb1cad75034c025785a28534a2d3
 
+
+
+## Issue 32 - Custom Gradle task deployToDev
+
+Objetivo: criar uma pipeline de deployment local (DEV) usando apenas tasks built-in do Gradle, com os seguintes passos em sequência:
+
+- Delete: limpar a diretoria de deployment (`build/deployment/dev`).
+- Copy: copiar o artefacto principal (JAR) para `build/deployment/dev`.
+- Copy: copiar apenas as dependências de runtime (JARs) para `build/deployment/dev/lib`.
+- Copy + ReplaceTokens: copiar ficheiros `src/main/resources/*.properties` para `build/deployment/dev`, aplicando substituição de tokens (`@projectVersion@` e `@buildTimestamp@`).
+
+
+Comando executado e validação (último comando enviado):
+
+```bash
+./gradlew -q deployToDev
+ls -la build/deployment/dev
+echo '--- lib ---'
+ls -la build/deployment/dev/lib
+```
+
+Output observado (resumo):
+
+![Output of ./gradlew -q deployToDev](img/deployToDev/outputGradlew.png)
