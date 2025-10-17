@@ -153,11 +153,7 @@ Para além de conseguirmos ver que todo o build foi sucedido, podemos ainda veri
 
 ![Resultado dos Testes](img\taskTest.png)
 
-<<<<<<< Updated upstream
-## Issue 25 - Add Gradle task backup to copy src to backup/
-=======
 ## Issue 26 - Add Gradle task backup to copy src to backup/
->>>>>>> Stashed changes
 
 Este *issue* descreve a adição de uma *task* Gradle que utiliza o tipo embutido `Copy` para criar uma cópia da pasta `src` para uma nova pasta `backup/` no diretório do projeto. O objetivo é fornecer uma forma rápida e reproduzível de criar uma cópia de segurança dos ficheiros fonte.
 
@@ -745,3 +741,177 @@ ls -la build/deployment/dev/lib
 Output observado:
 
 ![Output of ./gradlew -q deployToDev](img/deployToDev/outputGradlew.png)
+
+## Issue 35 - Create a new source set for integration tests
+
+O *Custom Source Set* foi implementado no ficheiro *build.gradle*, juntamente com todas as dependências necessárias e todos os mecanismos de ordenação de tarefas. Posto isto, foram adicionados os seguintes conteúdos ao ficheiro *build.gradle*:
+
+        sourceSets {
+            integrationTest {
+                java {
+                    srcDir 'src/integrationTest/java'
+                }
+                resources {
+                    srcDir 'src/integrationTest/resources'
+                }
+
+                compileClasspath += sourceSets.main.output
+                runtimeClasspath += sourceSets.main.output
+            }
+        }
+
+
+        configurations {
+            integrationTestImplementation.extendsFrom implementation
+            integrationTestRuntimeOnly.extendsFrom runtimeOnly
+        }
+
+        dependencies {
+            integrationTestImplementation 'org.springframework.boot:spring-boot-starter-test'
+            integrationTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+            integrationTestRuntimeOnly 'com.h2database:h2'
+        }
+
+        task integrationTest (type: Test){
+            description = 'Executa os testes de Integração'
+            group = 'COGSI'
+            testClassesDirs = sourceSets.integrationTest.output.classesDirs
+            classpath = sourceSets.integrationTest.runtimeClasspath
+            shouldRunAfter test
+        }
+
+        check.dependsOn integrationTest
+
+Neste ficheiro foi criado o *source set* novo, onde são especificadas pastas de código e de recursos, além de adicionar ao classpath dos testes de integração o mesmo output do main, permitindo que estes utilizem as classes compiladas da aplicação principal. Adicionalmente, a secção de configurações faz com que o novo *source set* herde as dependências do projeto e de seguida são adicionadas as dependências necessárias para a execução dos testes. Por fim, é criada a tarefa que permite a execução dos testes, é de grande importância realçar que os testes de integração são executados após os testes unitários e que a execução da tarefa *check* depende do sucesso da execução dos testes de integração.
+ 
+De forma a validarmos tudo o que foi implementado, foram realizados os seguintes passos:
+
+1. Criados testes unitários para a classe ***Order*** e para a classe ***Employee***
+
+        class OrderTest {
+
+            @Test
+            void constructorAndGetters_shouldReturnCorrectValues() {
+                Order o = new Order("MacBook Pro", Status.IN_PROGRESS);
+
+                assertThat(o.getId()).isNull();
+                assertThat(o.getDescription()).isEqualTo("MacBook Pro");
+                assertThat(o.getStatus()).isEqualTo(Status.IN_PROGRESS);
+            }
+        }
+
+        class EmployeeTest {
+
+            @Test
+            void constructorAndGetters_shouldReturnCorrectValues() {
+                Employee e = new Employee("Nuno", "Cunha", "Developer");
+
+                assertThat(e.getFirstName()).isEqualTo("Nuno");
+                assertThat(e.getLastName()).isEqualTo("Cunha");
+                assertThat(e.getRole()).isEqualTo("Developer");
+                assertThat(e.getName()).isEqualTo("Nuno Cunha");
+            }
+        }
+
+Podemos observar o resultado dos mesmo através do *report* feito pelo *Gradle*.
+
+![Testes Unitários](img/unitaryTestsDone/unitary_tests.png)
+
+De seguida, foi adicionada uma pasta para os testes de integração, ficando a pasta *app* do projeto com o seguinte aspeto:
+
+        app/
+        ├── build/
+        │   ├── reports/
+        │   │   ├── configuration-cache/
+        │   │   └── problems/
+        │   └── ...
+        ├── src/
+        │   ├── main/
+        │   │   ├── java/
+        │   │   │   └── payroll/
+        │   │   └── resources/
+        │   ├── test/
+        │   │   ├── java/
+        │   │   │   └── payroll/
+        │   │   └── resources/
+        │   └── integrationTest/
+        │       ├── java/
+        │       │   └── payroll/
+        │       └── resources/
+        └── build.gradle
+
+Dentro da pasta *integrationTest* foram criados testes de integração para os repositórios das classes *Order* e *Employee*:
+
+        @DataJpaTest
+        class OrderRepositoryIT {
+
+            @Autowired
+            private OrderRepository repo;
+
+            @Test
+            void shouldPersistAndRetrieveOrder() {
+                Order order = new Order("Laptop", Status.IN_PROGRESS);
+                repo.save(order);
+
+                Optional<Order> found = repo.findById(order.getId());
+                assertThat(found).isPresent();
+                assertThat(found.get().getDescription()).isEqualTo("Laptop");
+                assertThat(found.get().getStatus()).isEqualTo(Status.IN_PROGRESS);
+            }
+        }
+
+        @DataJpaTest
+        class EmployeeRepositoryIT {
+
+            @Autowired
+            private EmployeeRepository repo;
+
+            @Test
+            void shouldPersistAndLoadEmployee() {
+                Employee e = new Employee("Nuno", "Cunha", "Developer");
+                repo.save(e); // H2 in-memory
+
+                Optional<Employee> found = repo.findById(e.getId());
+                assertThat(found).isPresent();
+                assertThat(found.get().getName()).isEqualTo("Nuno Cunha");
+                assertThat(found.get().getRole()).isEqualTo("Developer");
+            }
+        }
+
+Para a verificação dos resultados, é necessário executar a tarefa criada anteriormente. Os resultados são encontradas também num *report* criado pelo *Gradle*
+
+![Testes Unitários](img/IntegrationTestsDone/IntegrationTests.png)
+
+Tendo já verificado os resultados dos testes individualmente, podemos executar a a tarefa ***check*** com a *flag --info* de forma a validarmos a ordem de execução dos testes.
+
+        > Task :app:test FROM-CACHE
+        Build cache key for task ':app:test' is bfab188ce9fbcf894e457f055894108f
+        Task ':app:test' is not up-to-date because:
+          Output property 'binaryResultsDirectory' file /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part2/app/build/test-results/test/binary has been removed.
+          Output property 'binaryResultsDirectory' file /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part2/app/build/test-results/test/binary/output.bin has been removed.
+          Output property 'binaryResultsDirectory' file /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part2/app/build/test-results/test/binary/output.bin.idx has been removed.
+          and more...
+        Loaded cache entry for task ':app:test' with cache key bfab188ce9fbcf894e457f055894108f
+
+        > Task :app:integrationTest FROM-CACHE
+        Build cache key for task ':app:integrationTest' is dd51f1b7c5267c4c090cc45993455308
+        Task ':app:integrationTest' is not up-to-date because:
+          Output property 'binaryResultsDirectory' file /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part2/app/build/test-results/integrationTest/binary has been removed.
+          Output property 'binaryResultsDirectory' file /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part2/app/build/test-results/integrationTest/binary/output.bin has been removed.
+          Output property 'binaryResultsDirectory' file /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part2/app/build/test-results/integrationTest/binary/output.bin.idx has been removed.
+          and more...
+        Loaded cache entry for task ':app:integrationTest' with cache key dd51f1b7c5267c4c090cc45993455308
+        Resolve mutations for :app:check (Thread[#1386,Execution worker,5,main]) started.
+        :app:check (Thread[#1386,Execution worker,5,main]) started.
+
+        > Task :app:check UP-TO-DATE
+        Skipping task ':app:check' as it has no actions.
+
+        BUILD SUCCESSFUL in 1s
+        5 actionable tasks: 5 from cache
+        Some of the file system contents retained in the virtual file system are on file systems that Gradle doesn't support watching. The relevant state was discarded to ensure changes to these locations are properly detected. You can override this by explicitly enabling file system watching.
+        Configuration cache entry reused.
+
+**NOTA**: O *output* foi abreviado para uma melhor apresentação dos resultados.
+
+Como podemos observar o *build* do projeto é bem sucedido e a execução dos testes unitários é realizada antes da execução dos testes de integração.
