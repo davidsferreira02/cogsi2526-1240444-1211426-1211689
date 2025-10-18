@@ -1044,3 +1044,49 @@ Resultado esperado:
 
 - Pasta `backup/` contendo cópia de `src/`.
 - Artefacto `backup.zip` na raiz do projeto.
+
+## Issue 33 (Ant) - Create a custom task that depends on installDist and runs the generated distribution scripts
+
+Este *issue* tem como objetivo demonstrar que a execução completa (compilar + executar) pode ser feita com Ant e que o resultado funcional final é equivalente ao obtido com Gradle.
+
+### Descrição da tarefa
+
+- Criar um alvo `runApp` no `build.xml` que dependa dos alvos de compilação (`compile` / `jar`) e que utilize a task `<java>` para executar a classe principal da aplicação.
+- Garantir que o classpath usado pela task `<java>` inclui as classes compiladas e as dependências resolvidas (via Ivy ou jars locais em `lib/`).
+
+Código adicionado ao `build.xml`:
+
+    <target name="compile" depends="init, resolve" description="--> Compiles the Java source code">
+        <javac srcdir="${src.dir}"
+            destdir="${build.classes.dir}"
+            classpathref="compile.classpath"
+            includeantruntime="false"
+            source="${java.source.version}"
+            target="${java.target.version}" />
+        <!-- Copies resources (e.g., application.properties) to the classes folder -->
+        <copy todir="${build.classes.dir}" failonerror="false">
+            <fileset dir="${resources.dir}" erroronmissingdir="false" />
+        </copy>
+    </target>
+
+    <!-- Target to run the application -->
+    <target name="runApp" depends="jar" description="--> Executes the Spring Boot application">
+        <java classname="${main.class}" fork="true">
+            <classpath>
+                <pathelement location="${jar.file}" />
+                <path refid="compile.classpath" />
+            </classpath>
+        </java>
+    </target>
+
+### O que foi feito e porquê (resolução do problema)
+
+1. Foi implementado o alvo `runApp` no `build.xml` para que a aplicação possa ser compilada e executada com Ant, sem depender do wrapper do Gradle.
+
+2. A task `<java>` foi usada com `fork=true` para isolar o processo da VM de execução do Ant, garantindo comportamento semelhante ao do Gradle/JavaExec. O classpath foi explicitamente configurado para incluir as classes produzidas por `<javac>` e as bibliotecas em `lib/` (obtidas através da target `deps` que usa Ivy), garantindo que todas as dependências necessárias estão presentes em tempo de execução.
+
+3. Esta solução replica por etapas a lógica do Gradle (`build` seguido de `runApp`) com alvos Ant: `deps` -> `compile` -> `runApp`. A ordenação explícita de dependências entre alvos assegura que a compilação e a resolução de dependências ocorrem antes da execução.
+
+4. Validação: o output observado ao executar `ant runApp` foi equivalente ao obtido com `./gradlew runApp` do ponto de vista funcional, confirmando que a aplicação inicia corretamente e está operacional.
+
+Conclusão: A implementação do alvo `runApp` em Ant fornece uma alternativa válida ao uso do Gradle para compilar e executar a aplicação. A abordagem é explícita (mais verbosa) mas reproduz o mesmo comportamento e output.
