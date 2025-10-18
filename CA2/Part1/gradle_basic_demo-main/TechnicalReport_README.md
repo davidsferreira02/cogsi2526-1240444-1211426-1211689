@@ -729,9 +729,10 @@ Objetivo: criar uma pipeline de deployment local (DEV) usando apenas tasks built
 - Copy: copiar apenas as dependências de runtime (JARs) para `build/deployment/dev/lib`.
 - Copy + ReplaceTokens: copiar ficheiros `src/main/resources/*.properties` para `build/deployment/dev`, aplicando substituição de tokens (`@projectVersion@` e `@buildTimestamp@`).
 
-Comando executado e validação:
+Comando executado e validação (aplica-se à Parte 2 — projeto `gradle_basic_demo-main`):
 
 ```bash
+cd CA2/Part2/gradle_basic_demo-main
 ./gradlew -q deployToDev
 ls -la build/deployment/dev
 echo '--- lib ---'
