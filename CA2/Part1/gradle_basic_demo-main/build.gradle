@@ -66,9 +66,8 @@ task backup(type: Copy) {
     into 'backup'
 }
 
-// Issue 27 - zipBackup task creates a zip from the backup directory ensuring backup runs first
 task zipBackup(type: Zip) {
-    group = "DevOps"
+    group = "COGSI"
     description = "Creates a zip archive of the backup directory (depends on backup)"
 
     dependsOn backup
