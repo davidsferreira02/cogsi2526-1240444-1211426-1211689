@@ -743,6 +743,94 @@ Output observado:
 
 ![Output of ./gradlew -q deployToDev](img/deployToDev/outputGradlew.png)
 
+## Issue 33 - Create a custom task that depends on installDist and runs the generated distribution scripts
+
+Objetivo: Criar uma *task* Gradle que dependa de `installDist` e que execute a aplicação usando os scripts gerados pela distribuição (`build/install/.../bin/<app>`), escolhendo o script executável correto consoante o sistema operativo (Unix-like vs Windows).
+
+Explicação da tarefa:
+
+1. A *task* foi implementada no ficheiro `app/build.gradle` como uma `Exec` task registada com o nome `runApp`. Esta *task* depende explicitamente de `installDist` para garantir que a distribuição (scripts + JARs) foi gerada antes da execução.
+2. A *task* determina o sistema operativo em tempo de execução através de `System.getProperty('os.name').toLowerCase()` e escolhe o script apropriado (`app` no Linux/macOS, `app.bat` no Windows) a partir do diretório `build/install/app/bin/`.
+3. Agrupar a tarefa no grupo `COGSI` e adicionar uma `description` torna-a fácil de descobrir com `./gradlew tasks`.
+
+Implementação da tarefa:
+
+        tasks.register('runApp', Exec) {
+            group = 'COGSI'
+            description = 'Runs the Chat Application'
+            dependsOn tasks.named('installDist')
+            
+            def os = System.getProperty('os.name').toLowerCase()
+            if (os.contains('win')) {
+                commandLine "${buildDir}/install/app/bin/app.bat"
+            } else {
+                commandLine "${buildDir}/install/app/bin/app"
+            }
+    
+        }
+
+O que foi feito e porquê resolve o problema:
+
+- Garantia de artefactos prontos: obrigando a dependência `installDist`, asseguramos que os ficheiros binários e JARs necessários existem antes de tentar executar a aplicação.
+- Compatibilidade multi-SO: a deteção do SO e a seleção do script (`.bat` vs script Unix) tornam a tarefa portável entre máquinas Windows e Unix-like sem alterações manuais.
+- Simplicidade de uso: para executar a aplicação empacotada basta correr `./gradlew runApp`. Alternativamente, os passos manuais equivalentes são: `./gradlew installDist` seguido de `build/install/app/bin/app` (ou `.../app.bat` no Windows).
+
+Como verificar (passos executados):
+
+1. No terminal, na raiz do módulo `app`, correr:
+
+        ./gradlew runApp
+
+2. A saída esperada é equivalente a executar a aplicação empacotada — o *terminal* deverá indicar que a aplicação iniciou.
+
+### Output de ./gradlew runApp
+
+```bash
+./gradlew runApp
+Calculating task graph as configuration cache cannot be reused because file 'app/build.gradle' has changed.
+
+> Task :app:runApp
+
+    .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+    '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.5)
+
+2025-10-17T23:54:03.648+01:00  INFO 70245 --- [           main] payroll.PayrollApplication               : Starting PayrollApplication using Java 21.0.8 with PID 70245 (/home/rafael/mestrado/COGSI/.../app/build/install/app/lib/app-plain.jar started by rafael in /home/rafael/.../CA2/Part2/app)
+2025-10-17T23:54:03.654+01:00  INFO 70245 --- [           main] payroll.PayrollApplication               : No active profile set, falling back to 1 default profile: "default"
+2025-10-17T23:54:04.658+01:00  INFO 70245 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-10-17T23:54:04.785+01:00  INFO 70245 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 112 ms. Found 2 JPA repository interfaces.
+2025-10-17T23:54:05.647+01:00  INFO 70245 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2025-10-17T23:54:05.672+01:00  INFO 70245 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-10-17T23:54:05.673+01:00  INFO 70245 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.20]
+2025-10-17T23:54:05.776+01:00  INFO 70245 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-10-17T23:54:05.779+01:00  INFO 70245 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 2054 ms
+2025-10-17T23:54:06.046+01:00  INFO 70245 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-10-17T23:54:06.260+01:00  INFO 70245 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:760a6935-8e4d-4614-a60a-f50c325b9914 user=SA
+2025-10-17T23:54:06.262+01:00  INFO 70245 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-10-17T23:54:06.319+01:00  INFO 70245 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-10-17T23:54:06.415+01:00  INFO 70245 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.4.4.Final
+2025-10-17T23:54:06.480+01:00  INFO 70245 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-10-17T23:54:06.813+01:00  INFO 70245 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-10-17T23:54:07.891+01:00  INFO 70245 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-10-17T23:54:07.935+01:00  INFO 70245 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-10-17T23:54:08.357+01:00  WARN 70245 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-10-17T23:54:09.075+01:00  INFO 70245 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path ''
+2025-10-17T23:54:09.090+01:00  INFO 70245 --- [           main] payroll.PayrollApplication               : Started PayrollApplication in 5.926 seconds (process running for 6.516)
+2025-10-17T23:54:09.280+01:00  INFO 70245 --- [           main] payroll.LoadDatabase                     : Preloaded Employee{id=1, firstName='Bilbo', lastName='Baggins', role='burglar'}
+2025-10-17T23:54:09.280+01:00  INFO 70245 --- [           main] payroll.LoadDatabase                     : Preloaded Employee{id=2, firstName='Frodo', lastName='Baggins', role='thief'}
+2025-10-17T23:54:09.292+01:00  INFO 70245 --- [           main] payroll.LoadDatabase                     : Preloaded Order{id=1, description='MacBook Pro', status=COMPLETED}
+2025-10-17T23:54:09.292+01:00  INFO 70245 --- [           main] payroll.LoadDatabase                     : Preloaded Order{id=2, description='iPhone', status=IN_PROGRESS}
+2025-10-17T23:54:13.120+01:00  INFO 70245 --- [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-10-17T23:54:13.120+01:00  INFO 70245 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-10-17T23:54:13.123+01:00  INFO 70245 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+<===========--> 85% EXECUTING [37s]
+> :app:runApp
+```
+
 ## Issue 35 - Create a new source set for integration tests
 
 O *Custom Source Set* foi implementado no ficheiro *build.gradle*, juntamente com todas as dependências necessárias e todos os mecanismos de ordenação de tarefas. Posto isto, foram adicionados os seguintes conteúdos ao ficheiro *build.gradle*:

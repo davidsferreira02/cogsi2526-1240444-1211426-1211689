@@ -135,3 +135,17 @@ tasks.register('deployToDev') {
     description = 'Cleans build/deployment/dev and copies app jar, runtime libs, and token-filtered configs'
     dependsOn 'cleanDevDeploy', 'copyAppArtifact', 'copyRuntimeLibs', 'copyConfigWithTokens'
 }
+
+tasks.register('runApp', Exec) {
+    group = 'COGSI'
+    description = 'Runs the Chat Application'
+    dependsOn tasks.named('installDist')
+    
+    def os = System.getProperty('os.name').toLowerCase()
+    if (os.contains('win')) {
+        commandLine "${buildDir}/install/app/bin/app.bat"
+    } else {
+        commandLine "${buildDir}/install/app/bin/app"
+    }
+    
+}
