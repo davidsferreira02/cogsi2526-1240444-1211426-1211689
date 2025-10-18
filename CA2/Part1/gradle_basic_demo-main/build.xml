@@ -4,7 +4,7 @@
 
     <!-- ===== Load Ivy (ant-lib/ivy-*.jar) ===== -->
     <path id="ivy.classpath">
-        <fileset dir="ant-lib" includes="ivy-*.jar"/>
+        <fileset dir="ant-lib" includes="ivy-*.jar" erroronmissingdir="false"/>
     </path>
     <taskdef resource="org/apache/ivy/ant/antlib.xml"
              uri="antlib:org.apache.ivy.ant"
@@ -19,6 +19,7 @@
     <property name="classes.dir"   value="${build.dir}/classes"/>
     <property name="jar.dir"       value="${build.dir}/jar"/>
     <property name="dist.dir"      value="${build.dir}/dist"/>
+    <property name="backup.dir"    value="backup"/>
 
     <property name="encoding"      value="UTF-8"/>
 
@@ -116,6 +117,22 @@
         </java>
     </target>
 
+    <!-- Convenience alias -->
+    <target name="run" depends="run-app" description="Alias to run the main application"/>
+
     <target name="clean-build" depends="clean,jar"/>
     <target name="main" depends="clean,jar"/>
+
+    <!-- ===== Backup and Zip tasks ===== -->
+    <target name="backup" description="Copy sources to backup/ folder">
+        <mkdir dir="${backup.dir}"/>
+        <copy todir="${backup.dir}">
+            <fileset dir="src"/>
+        </copy>
+    </target>
+
+    <target name="zipBackup" depends="backup" description="Create backup.zip from backup/ folder">
+        <delete file="backup.zip" quiet="true"/>
+        <zip destfile="backup.zip" basedir="${backup.dir}"/>
+    </target>
 </project>

@@ -915,3 +915,81 @@ Tendo já verificado os resultados dos testes individualmente, podemos executar 
 **NOTA**: O *output* foi abreviado para uma melhor apresentação dos resultados.
 
 Como podemos observar o *build* do projeto é bem sucedido e a execução dos testes unitários é realizada antes da execução dos testes de integração.
+
+## Secção Ant
+
+Nesta secção documentamos o uso de Ant no projeto `CA2/Part1/gradle_basic_demo-main`, incluindo a configuração de dependências via Ivy e a criação de tarefas equivalentes às usadas em Gradle.
+
+### Pré‑requisitos
+
+- Ant instalado (macOS via Homebrew: `brew install ant`).
+- Java 17 disponível no PATH (o `build.xml` compila com `release="17"`).
+
+### Configurar Ivy (uma vez)
+
+O `build.xml` usa Ivy para resolver dependências. O jar do Ivy é esperado em `ant-lib/`.
+
+                mkdir -p ant-lib
+                curl -L -o ant-lib/ivy-2.5.2.jar \
+                    https://repo1.maven.org/maven2/org/apache/ivy/ivy/2.5.2/ivy-2.5.2.jar
+
+Alternativa via Homebrew (se instalou o pacote `ivy`):
+
+    brew install ivy
+    mkdir -p ant-lib
+    ln -sf "$(ls $(brew --prefix ivy)/libexec/ivy-*.jar | tail -1)" ant-lib/
+
+### Alvos principais (build.xml)
+
+- `deps`: resolve e descarrega dependências com Ivy para `libs/`.
+- `clean-build`: limpa e compila/empacota; gera jars em `ant-build/dist/`.
+- `run-app`, `run-client`, `run-server`: executam os jars criados.
+- `run`: atalho para `run-app` (alias adicionado).
+
+Comandos de exemplo:
+
+    ant deps
+    ant clean-build
+    ant run
+
+### Issue 27 (Ant) — Adicionar alvo zipBackup (depende de backup)
+
+Objetivo: criar um ficheiro `backup.zip` a partir da pasta `backup/`, garantindo antes a cópia de `src/` para `backup/`.
+
+Alterações no `build.xml` (adicionadas):
+
+        <!-- Propriedade para a pasta de backup -->
+        <property name="backup.dir" value="backup"/>
+
+        <!-- Copia src/ para backup/ -->
+        <target name="backup" description="Copy sources to backup/ folder">
+            <mkdir dir="${backup.dir}"/>
+            <copy todir="${backup.dir}">
+                <fileset dir="src"/>
+            </copy>
+        </target>
+
+        <!-- Cria backup.zip a partir de backup/ -->
+        <target name="zipBackup" depends="backup" description="Create backup.zip from backup/ folder">
+            <delete file="backup.zip" quiet="true"/>
+            <zip destfile="backup.zip" basedir="${backup.dir}"/>
+        </target>
+
+Execução e validação (comando e excerto do output real obtido):
+
+    ant zipBackup
+
+          backup:
+                 [copy] Copying 1 file to .../CA2/Part1/gradle_basic_demo-main/backup
+
+          zipBackup:
+              [delete] Deleting: .../CA2/Part1/gradle_basic_demo-main/backup.zip
+                  [zip] Building zip: .../CA2/Part1/gradle_basic_demo-main/backup.zip
+
+          BUILD SUCCESSFUL
+          Total time: 0 seconds
+
+Resultado esperado:
+
+- Pasta `backup/` contendo cópia de `src/`.
+- Artefacto `backup.zip` na raiz do projeto.
