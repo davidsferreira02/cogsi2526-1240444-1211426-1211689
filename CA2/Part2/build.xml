@@ -87,4 +87,27 @@
         </java>
     </target>
 
+    <!-- Target to generate Javadoc documentation -->
+    <target name="javadoc" depends="compile" description="--> Generates Javadoc documentation">
+        <javadoc destdir="${javadoc.dir}"
+            author="true"
+            version="true"
+            use="true"
+            windowtitle="${app.name} Javadoc"
+            access="package"> <!-- Equivalent to JavadocMemberLevel.PACKAGE -->
+
+            <sourcepath>
+                <pathelement location="${src.dir}" />
+            </sourcepath>
+            <classpath refid="compile.classpath" />
+        </javadoc>
+    </target>
+
+    <!-- Target to create a ZIP of the Javadoc documentation -->
+    <target name="zipJavadoc" depends="javadoc"
+        description="--> Compresses the Javadoc into a ZIP file">
+        <zip destfile="${javadoc.zip.file}" basedir="${javadoc.dir}" />
+        <echo message="Javadoc ZIP created at: ${javadoc.zip.file}" />
+    </target>
+
 </project>
