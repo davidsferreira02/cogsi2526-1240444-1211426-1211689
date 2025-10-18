@@ -831,6 +831,74 @@ Calculating task graph as configuration cache cannot be reused because file 'app
 > :app:runApp
 ```
 
+## Issue 34 - Create a custom task that depends on the javadoc task
+
+Objetivo:
+
+Criar uma *task* Gradle personalizada chamada `zipJavadoc` que dependa da *task* `javadoc`. A *task* deve gerar a documentação Javadoc do projeto e, em seguida, empacotar a documentação gerada numa arquivo ZIP, facilitando distribuição ou inclusão em artefactos de release.
+
+```gradle
+javadoc {
+    group = 'Documentation'
+    description = 'Generates Javadoc for the main source set.'
+    source = sourceSets.main.allJava
+    destinationDir = file("${buildDir}/docs/javadoc")
+    classpath = configurations.compileClasspath
+
+    options {
+        // Includes classes with package-level visibility in the Javadoc, preventing only PayrollApplication from being documented.
+        memberLevel = JavadocMemberLevel.PACKAGE
+    }
+}
+
+tasks.register('zipJavadoc', Zip) {
+    group = 'Distribution'
+    description = 'Zips the generated Javadoc documentation.'
+
+    dependsOn tasks.named('javadoc')
+
+    from(tasks.named('javadoc').get().destinationDir)
+    archiveFileName = "${project.name}-javadoc-${project.version}.zip"
+    destinationDirectory = file("${buildDir}/docs")
+}
+```
+
+Explicação da tarefa:
+
+1. A *task* `javadoc` é a task padrão do Gradle que gera a documentação API do projecto em HTML. O output por defeito é colocado em `build/docs/javadoc`, salvo se configurado de outra forma.
+2. A nova *task* `zipJavadoc` usa o tipo embutido `Zip` do Gradle para criar um ficheiro .zip com todo o conteúdo gerado pelo `javadoc`.
+3. Para garantir ordem correta de execução, `zipJavadoc` declara `dependsOn tasks.named('javadoc')`. Desta forma, o Gradle garante que a documentação está atualizada antes de criar o zip, evitando arquivar conteúdo desactualizado ou inexistente.
+4. A *task* referencia diretamente o `destinationDir` da task `javadoc` (`tasks.named('javadoc').get().destinationDir`) como origem do conteúdo a arquivar. Isso assegura que todos os ficheiros (HTML, CSS, imagens) são incluídos.
+
+O que foi feito e porque resolve o problema:
+
+1. Foi adicionada a *task* `zipJavadoc` ao ficheiro `app/build.gradle` do módulo aplicacional. A implementação faz `dependsOn tasks.named('javadoc')`, `from(tasks.named('javadoc').get().destinationDir)`, define `archiveFileName = "${project.name}-javadoc-${project.version}.zip"` e configura `destinationDirectory` para `file("${buildDir}/docs")`.
+2. Esta abordagem separa responsabilidades: `javadoc` gera, `zipJavadoc` empacota. A dependência entre tasks usa o grafo do Gradle para ordenar execuções de forma robusta, o que é superior a executar comandos shell encadeados manualmente.
+3. O artefacto zip resultante é facilmente localizável e pode ser integrado em pipelines de deployment ou publicado como parte de uma release. Ao apontar para o `destinationDir` do `javadoc`, evitamos problemas com paths hard-coded e tornamos a task resiliente a alterações na configuração do `javadoc`.
+
+Como verificar:
+
+1. Executar a task:
+
+```
+./gradlew zipJavadoc
+```
+
+2. Confirmar que o ficheiro ZIP foi criado em `app/build/docs/` com o nome `${project.name}-javadoc-${project.version}.zip`.
+3. Extrair o ZIP e abrir `index.html` para garantir que a documentação HTML foi incluída corretamente.
+
+Resultados observados:
+
+ZIP criado:
+
+```bash
+$ ls app/build/docs
+app-javadoc-unspecified.zip  javadoc
+```
+JavaDoc extraído:
+
+![Javadoc gerado](img/zipJavadoc/generatedJavadoc.png)
+
 ## Issue 35 - Create a new source set for integration tests
 
 O *Custom Source Set* foi implementado no ficheiro *build.gradle*, juntamente com todas as dependências necessárias e todos os mecanismos de ordenação de tarefas. Posto isto, foram adicionados os seguintes conteúdos ao ficheiro *build.gradle*:

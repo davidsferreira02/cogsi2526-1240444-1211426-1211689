@@ -149,3 +149,26 @@ tasks.register('runApp', Exec) {
     }
     
 }
+javadoc {
+    group = 'Documentation'
+    description = 'Generates Javadoc for the main source set.'
+    source = sourceSets.main.allJava
+    destinationDir = file("${buildDir}/docs/javadoc")
+    classpath = configurations.compileClasspath
+
+    options {
+        // Includes classes with package-level visibility in the Javadoc, preventing only PayrollApplication from being documented.
+        memberLevel = JavadocMemberLevel.PACKAGE
+    }
+}
+
+tasks.register('zipJavadoc', Zip) {
+    group = 'Distribution'
+    description = 'Zips the generated Javadoc documentation.'
+
+    dependsOn tasks.named('javadoc')
+
+    from(tasks.named('javadoc').get().destinationDir)
+    archiveFileName = "${project.name}-javadoc-${project.version}.zip"
+    destinationDirectory = file("${buildDir}/docs")
+}
