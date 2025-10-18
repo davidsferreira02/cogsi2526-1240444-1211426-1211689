@@ -1,0 +1,24 @@
+<!--
+  ivy.xml - Ficheiro de declaração de dependências para o Apache Ivy.
+
+  Este ficheiro lista todas as dependências externas do projeto, de forma similar
+  ao bloco `dependencies` no `build.gradle`.
+-->
+<ivy-module version="2.0">
+    <info organisation="com.example" module="payroll"/>
+    <dependencies>
+        <!-- Spring Boot Dependencies -->
+        <dependency org="org.springframework.boot" name="spring-boot-starter-web" rev="3.2.5"/>
+        <dependency org="org.springframework.boot" name="spring-boot-starter-data-jpa" rev="3.2.5"/>
+        <dependency org="org.springframework.boot" name="spring-boot-starter-hateoas" rev="3.2.5"/>
+
+        <!-- Google Guava -->
+        <dependency org="com.google.guava" name="guava" rev="32.1.2-jre"/>
+
+        <!-- Runtime Dependencies -->
+        <dependency org="com.h2database" name="h2" rev="2.2.224" conf="default->master,runtime"/>
+
+        <!-- Test Dependencies (não utilizadas nos alvos replicados, mas listadas para completude) -->
+        <dependency org="org.springframework.boot" name="spring-boot-starter-test" rev="3.2.5" conf="default->master,runtime"/>
+    </dependencies>
+</ivy-module>

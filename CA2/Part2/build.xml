@@ -1,0 +1,90 @@
+<project name="payroll-ant" default="jar" xmlns:ivy="antlib:org.apache.ivy.ant">
+
+    <!-- ===== Load Ivy (ant-lib/ivy-*.jar) ===== -->
+    <path id="ivy.classpath">
+        <fileset dir="ant-lib" includes="ivy-*.jar" erroronmissingdir="false" />
+    </path>
+    <taskdef resource="org/apache/ivy/ant/antlib.xml"
+        uri="antlib:org.apache.ivy.ant"
+        classpathref="ivy.classpath" />
+
+    <!-- 1. Global Property Definitions -->
+    <property name="app.name" value="payroll" />
+    <property name="app.version" value="0.0.1-SNAPSHOT" />
+    <property name="main.class" value="payroll.PayrollApplication" />
+
+    <!-- Directories -->
+    <property name="src.dir" location="app/src/main/java" />
+    <property name="resources.dir" location="app/src/main/resources" />
+    <property name="build.dir" location="build" />
+    <property name="build.classes.dir" location="${build.dir}/classes" />
+    <property name="lib.dir" location="lib" />
+    <property name="dist.dir" location="${build.dir}/dist" />
+    <property name="jar.file" location="${dist.dir}/${app.name}.jar" />
+    <property name="javadoc.dir" location="${build.dir}/docs/javadoc" />
+    <property name="javadoc.zip.file"
+        location="${build.dir}/docs/${app.name}-javadoc-${app.version}.zip" />
+
+    <!-- Compiler Configuration -->
+    <property name="java.source.version" value="17" />
+    <property name="java.target.version" value="17" />
+
+    <!-- 2. Classpath Definition -->
+    <path id="compile.classpath">
+        <fileset dir="${lib.dir}" includes="**/*.jar" />
+    </path>
+
+    <!-- Target to resolve dependencies -->
+    <target name="resolve" description="--> Resolves project dependencies with Ivy">
+        <ivy:retrieve pattern="${lib.dir}/[type]s/[artifact]-[revision](-[classifier]).[ext]" />
+    </target>
+
+    <!-- Target to clean the project -->
+    <target name="clean" description="--> Cleans the build directories">
+        <delete dir="${build.dir}" />
+        <delete dir="${lib.dir}" />
+    </target>
+
+    <!-- Target to create the necessary directories -->
+    <target name="init" description="--> Creates the build directory structure">
+        <mkdir dir="${build.classes.dir}" />
+        <mkdir dir="${dist.dir}" />
+        <mkdir dir="${lib.dir}" />
+    </target>
+
+    <!-- Target to compile the source code -->
+    <target name="compile" depends="init, resolve" description="--> Compiles the Java source code">
+        <javac srcdir="${src.dir}"
+            destdir="${build.classes.dir}"
+            classpathref="compile.classpath"
+            includeantruntime="false"
+            source="${java.source.version}"
+            target="${java.target.version}" />
+        <!-- Copies resources (e.g., application.properties) to the classes folder -->
+        <copy todir="${build.classes.dir}" failonerror="false">
+            <fileset dir="${resources.dir}" erroronmissingdir="false" />
+        </copy>
+    </target>
+
+    <!-- Target to create the JAR file -->
+    <target name="jar" depends="compile" description="--> Creates the executable JAR file">
+        <jar destfile="${jar.file}" basedir="${build.classes.dir}">
+            <manifest>
+                <attribute name="Main-Class" value="${main.class}" />
+                <!-- For a JAR to work with 'java -jar', the classpath needs to be in the manifest -->
+                <attribute name="Class-Path" value="${ant.project.name}.jar lib/" />
+            </manifest>
+        </jar>
+    </target>
+
+    <!-- Target to run the application -->
+    <target name="runApp" depends="jar" description="--> Executes the Spring Boot application">
+        <java classname="${main.class}" fork="true">
+            <classpath>
+                <pathelement location="${jar.file}" />
+                <path refid="compile.classpath" />
+            </classpath>
+        </java>
+    </target>
+
+</project>
