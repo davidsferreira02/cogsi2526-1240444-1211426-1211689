@@ -11,6 +11,8 @@
              classpathref="ivy.classpath"/>
 
     <!-- ===== Properties ===== -->
+    <!-- Import environment variables into the 'env.' namespace (e.g., env.JAVA_HOME) -->
+    <property environment="env"/>
     <property name="src.dir"       value="src/main/java"/>
     <property name="resources.dir" value="src/main/resources"/>
     <property name="lib.dir"       value="libs"/>
@@ -135,4 +137,70 @@
         <delete file="backup.zip" quiet="true"/>
         <zip destfile="backup.zip" basedir="${backup.dir}"/>
     </target>
+
+    
+
+    <target name="javaToolchain" description="Prints Java and Ant environment info">
+        <echo>Java version (java.version): ${ant.java.version}</echo>
+        <echo>JAVA_HOME: ${env.JAVA_HOME}</echo>
+        <echo>javac -version:</echo>
+        <exec executable="javac" failonerror="false">
+            <arg value="-version"/>
+        </exec>
+        <echo>java -version:</echo>
+        <exec executable="java" failonerror="false">
+            <arg value="-version"/>
+        </exec>
+        <echo>Ant version: ${ant.version}</echo>
+        <echo>java.home (runtime): ${java.home}</echo>
+        <echo>user.home: ${user.home}</echo>
+    </target>
+
+    <!-- ===== Ant-only "Wrapper" (no external script) ===== -->
+    <!-- Configuration: pinned Ant version and download locations -->
+    <property name="wrapper.ant.version" value="1.10.15"/>
+    <property name="wrapper.dir" value=".ant/wrapper"/>
+    <property name="wrapper.ant.zip" value="apache-ant-${wrapper.ant.version}-bin.zip"/>
+    <property name="wrapper.ant.url.primary" value="https://downloads.apache.org/ant/binaries/${wrapper.ant.zip}"/>
+    <property name="wrapper.ant.url.fallback" value="https://archive.apache.org/dist/ant/binaries/${wrapper.ant.zip}"/>
+    <property name="wrapper.ant.dir" value="${wrapper.dir}/apache-ant-${wrapper.ant.version}"/>
+
+    <target name="wrapper-prepare">
+        <mkdir dir="${wrapper.dir}"/>
+        
+        <get src="${wrapper.ant.url.primary}" dest="${wrapper.dir}/${wrapper.ant.zip}"
+             usetimestamp="true" ignoreerrors="true"/>
+        
+        <available file="${wrapper.dir}/${wrapper.ant.zip}" property="wrapper.ant.zip.available"/>
+    
+        <antcall target="wrapper-download-fallback"/>
+
+        <unzip src="${wrapper.dir}/${wrapper.ant.zip}" dest="${wrapper.dir}" overwrite="true"/>
+
+        <chmod file="${wrapper.ant.dir}/bin/ant" perm="755" verbose="true"/>
+    </target>
+
+   
+    <target name="wrapper-download-fallback" unless="wrapper.ant.zip.available">
+        <echo>Primary download not found; attempting fallback: ${wrapper.ant.url.fallback}</echo>
+        <get src="${wrapper.ant.url.fallback}" dest="${wrapper.dir}/${wrapper.ant.zip}"
+             usetimestamp="true"/>
+    </target>
+
+    <target name="wrapper" depends="wrapper-prepare" unless="usingWrappedAnt" description="Runs a target using a pinned Ant version">
+        <echo>Re-executing with Ant ${wrapper.ant.version} from ${wrapper.ant.dir}</echo>
+       
+        <condition property="_wrappedTarget" value="${wrappedTarget}" else="help">
+            <isset property="wrappedTarget"/>
+        </condition>
+        <exec executable="${wrapper.ant.dir}/bin/ant" failonerror="true">
+            <arg value="-f"/>
+            <arg value="${ant.file}"/>
+            <arg value="-DusingWrappedAnt=true"/>
+            
+            <arg value="${_wrappedTarget}"/>
+        </exec>
+    </target>
+
+    
 </project>
