@@ -916,9 +916,60 @@ Tendo já verificado os resultados dos testes individualmente, podemos executar 
 
 Como podemos observar o *build* do projeto é bem sucedido e a execução dos testes unitários é realizada antes da execução dos testes de integração.
 
-## Secção Ant
+## Ant
 
-Nesta secção documentamos o uso de Ant no projeto `CA2/Part1/gradle_basic_demo-main`, incluindo a configuração de dependências via Ivy e a criação de tarefas equivalentes às usadas em Gradle.
+Esta secção foca-se nas diferenças e similaridades entre Gradle e Ant, seguida por um plano prático para replicar — com Ant — as tarefas que implementámos com Gradle neste projecto.
+
+### 1. Gradle vs. Ant: Análise Comparativa
+
+| Característica | Gradle | Apache Ant |
+|---|---|---|
+| Linguagem do Build Script | DSL (Groovy ou Kotlin). Concisa e declarativa. | XML. Verboso e imperativo. |
+| Paradigma | Declarativo e por convenção: foca-se no "o quê" e assume estruturas padrão (ex: `src/main/java`). | Imperativo e por configuração: foca-se no "como" e exige passos explícitos. |
+| Gestão de Dependências | Nativa e integrada (resolução transitiva via repositórios como Maven Central). | Não nativa: normalmente usa-se Apache Ivy (ficheiro `ivy.xml`) para resolução automática; sem Ivy a gestão é manual (JARs em `lib/`). |
+| Ciclo de Vida e Grafos | Usa um DAG (grafo acíclico dirigido) para determinar ordem de execução e suporta builds incrementais/daemon. | Baseado em alvos/targets com dependências explícitas; menos sofisticado em otimizações de execução incremental. |
+| Extensibilidade | Rico ecossistema de plugins (ex.: Spring Boot plugin que adiciona `bootRun`, etc.). | Extensível criando targets e macros; integração por bibliotecas (Ivy, tasks em Java) — mais manual. |
+| Performance | Optimizações como Gradle Daemon e cache de configuração tornam-no normalmente mais rápido. | Mais lento por omissão; cada execução tende a iniciar um novo processo Java e reexecuta alvos não marcado como incremental. |
+
+### 2. Similaridades Principais
+
+- Automação de Build: ambos automatizam compilação, teste, empacotamento e deploy.
+- Baseados na JVM: escritos em Java e executados sobre a JVM, logo multiplataforma.
+- Unidade de trabalho: Gradle tem "tasks" e Ant tem "targets" — ambos representam ações encadeáveis.
+
+### 3. Plano de Migração para Ant
+
+Para replicar as tasks  usadas no `build.gradle` com Ant seguiremos estes passos gerais:
+
+1. Estrutura do projeto e ficheiros iniciais
+
+     - Criar um ficheiro `build.xml` na raiz do projecto.
+     - Criar um ficheiro `ivy.xml` para declarar dependências do projecto.
+
+2. Definir propriedades e classpath
+
+     - No `build.xml` definir propriedades globais para diretórios (`src.dir`, `build.dir`, `dist.dir`, etc.) para facilitar manutenção.
+     - Definir um path `classpath` que inclua os JARs descarregados pelo Ivy.
+
+3. Configurar gestão de dependências com Ivy
+
+     - Criar um alvo `resolve` ou `deps` que use Ivy para ler o `ivy.xml`, descarregar dependências para uma pasta (`lib/`) e disponibilizá-las para o `classpath`.
+
+4. Criar alvos base do build
+
+     - `clean`: apagar diretórios de build/saída.
+     - `init`/`prepare`: criar diretórios necessários.
+     - `compile`: compilar código-fonte Java com `<javac>` usando o `classpath` com dependências.
+     - `jar`: empacotar classes compiladas num JAR, incluindo o atributo `Main-Class` no manifesto.
+
+5. Implementar as tasks solicitadas
+
+     - Definir alvos
+     - Definir ordem de execução e dependências entre alvos com `depends`.
+     - Usar `<copy>`, `<zip>`, `<java>` para replicar funcionalidades como deploy, backup, execução de aplicações.
+
+Com este plano conseguimos traduzir a lógica declarativa do Gradle para passos explícitos e imperativos em Ant, mantendo a mesma funcionalidade.
+
 
 ### Pré‑requisitos
 
