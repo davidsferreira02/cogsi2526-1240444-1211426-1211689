@@ -104,16 +104,16 @@ task runServer(type:JavaExec){
     args '59001'
 }
 
-task testChatClient(type: Test) {
-    group = "COGSI"
-    description = "Executa apenas o teste da classe ChatClient"
-
-    useJUnitPlatform()
-
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-
-}
+    task testChatClient(type: Test) {
+        group = "COGSI"                          
+        description = "Executa apenas o teste da classe ChatClient"
+        dependsOn build                          
+        useJUnitPlatform()                       
+        testClassesDirs = sourceSets.test.output.classesDirs  
+    
+        classpath = sourceSets.test.runtimeClasspath          
+        include '**/ChatClientTest.class'        
+    }
 
 // Issue #32 - deployToDev: cleans build/deployment/dev and prepares artifacts for a dev deployment
 def devDeployDir = "$buildDir/deployment/dev"

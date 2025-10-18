@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="gradle_basic_demo" basedir="." default="main"
+         xmlns:ivy="antlib:org.apache.ivy.ant">
+
+    <!-- ===== Load Ivy (ant-lib/ivy-*.jar) ===== -->
+    <path id="ivy.classpath">
+        <fileset dir="ant-lib" includes="ivy-*.jar"/>
+    </path>
+    <taskdef resource="org/apache/ivy/ant/antlib.xml"
+             uri="antlib:org.apache.ivy.ant"
+             classpathref="ivy.classpath"/>
+
+    <!-- ===== Properties ===== -->
+    <property name="src.dir"       value="src/main/java"/>
+    <property name="resources.dir" value="src/main/resources"/>
+    <property name="lib.dir"       value="libs"/>
+
+    <property name="build.dir"     value="ant-build"/>
+    <property name="classes.dir"   value="${build.dir}/classes"/>
+    <property name="jar.dir"       value="${build.dir}/jar"/>
+    <property name="dist.dir"      value="${build.dir}/dist"/>
+
+    <property name="encoding"      value="UTF-8"/>
+
+    <!-- Main classes -->
+    <property name="app.main"     value="basic_demo.App"/>
+    <property name="client.main"  value="basic_demo.ChatClientApp"/>
+    <property name="server.main"  value="basic_demo.ChatServerApp"/>
+
+    <!-- ===== Ivy dependencies ===== -->
+    <target name="deps" description="Resolve and retrieve dependencies via Ivy">
+        <ivy:settings/>
+        <ivy:resolve/>
+        <ivy:retrieve pattern="libs/[artifact]-[revision].[ext]" sync="true"/>
+    </target>
+
+    <!-- ===== Classpath ===== -->
+    <path id="compile.classpath">
+        <fileset dir="${lib.dir}" includes="**/*.jar" erroronmissingdir="false"/>
+    </path>
+
+    <!-- Compute MANIFEST Class-Path -->
+    <pathconvert property="manifest.classpath" pathsep=" ">
+        <path>
+            <fileset dir="${lib.dir}" includes="**/*.jar" erroronmissingdir="false"/>
+        </path>
+        <chainedmapper>
+            <flattenmapper/>
+            <globmapper from="*" to="libs/*"/>
+        </chainedmapper>
+    </pathconvert>
+
+    <!-- ===== Build Targets ===== -->
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+    </target>
+
+    <target name="prepare">
+        <mkdir dir="${classes.dir}"/>
+        <mkdir dir="${jar.dir}"/>
+        <mkdir dir="${dist.dir}"/>
+    </target>
+
+    <target name="resources" depends="prepare" description="Copy non-Java resources">
+        <copy todir="${classes.dir}">
+            <fileset dir="${resources.dir}" erroronmissingdir="false"/>
+        </copy>
+    </target>
+
+    <target name="compile" depends="deps,prepare,resources" description="Compile sources">
+        <javac srcdir="${src.dir}" destdir="${classes.dir}" includeantruntime="false"
+               release="17" encoding="${encoding}">
+            <classpath refid="compile.classpath"/>
+            <compilerarg value="-Xlint:deprecation"/>
+            <compilerarg value="-Xlint:unchecked"/>
+        </javac>
+    </target>
+
+    <!-- ===== Macro: make runnable JAR ===== -->
+    <macrodef name="make-runnable-jar">
+        <attribute name="mainclass"/>
+        <attribute name="name"/>
+        <sequential>
+            <jar destfile="${jar.dir}/@{name}.jar" basedir="${classes.dir}">
+                <manifest>
+                    <attribute name="Main-Class" value="@{mainclass}"/>
+                    <attribute name="Class-Path" value="${manifest.classpath}"/>
+                </manifest>
+            </jar>
+            <copy file="${jar.dir}/@{name}.jar" todir="${dist.dir}"/>
+            <copy todir="${dist.dir}/libs" flatten="false">
+                <fileset dir="${lib.dir}" includes="**/*.jar" erroronmissingdir="false"/>
+            </copy>
+        </sequential>
+    </macrodef>
+
+    <!-- ===== JARs ===== -->
+    <target name="jar-app"    depends="compile"><make-runnable-jar name="app"    mainclass="${app.main}"/></target>
+    <target name="jar-client" depends="compile"><make-runnable-jar name="client" mainclass="${client.main}"/></target>
+    <target name="jar-server" depends="compile"><make-runnable-jar name="server" mainclass="${server.main}"/></target>
+
+    <target name="jar" depends="jar-app,jar-client,jar-server" description="Build all jars"/>
+
+    <!-- ===== Run from dist/ ===== -->
+    <target name="run-app" depends="jar-app">
+        <java jar="${dist.dir}/app.jar" fork="true" failonerror="true"/>
+    </target>
+
+    <target name="run-client" depends="jar-client">
+        <java jar="${dist.dir}/client.jar" fork="true" failonerror="true"/>
+    </target>
+
+    <target name="run-server" depends="jar-server">
+        <java jar="${dist.dir}/server.jar" fork="true" failonerror="true">
+            <arg value="59001"/>
+        </java>
+    </target>
+
+    <target name="clean-build" depends="clean,jar"/>
+    <target name="main" depends="clean,jar"/>
+</project>
