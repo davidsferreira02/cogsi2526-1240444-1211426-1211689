@@ -5,16 +5,27 @@
     <!-- Load external properties first -->
     <property file="build.properties"/>
 
-    <!-- ===== Load Ivy (ant-lib/ivy-*.jar) ===== -->
-    <path id="ivy.classpath">
-        <fileset dir="ant-lib" includes="ivy-*.jar"/>
-    </path>
-    <taskdef resource="org/apache/ivy/ant/antlib.xml"
-             uri="antlib:org.apache.ivy.ant"
-             classpathref="ivy.classpath"/>
+    <!-- ===== Ivy bootstrap configuration (download ivy jar on demand) ===== -->
+    <property name="ivy.version" value="2.5.2"/>
+    <property name="ivy.dir" value="ant-lib"/>
+    <property name="ivy.jar" value="${ivy.dir}/ivy-${ivy.version}.jar"/>
+    <property name="ivy.url" value="https://repo1.maven.org/maven2/org/apache/ivy/ivy/${ivy.version}/ivy-${ivy.version}.jar"/>
 
     <!-- ===== Ivy dependencies ===== -->
     <target name="deps" description="Resolve and retrieve dependencies via Ivy">
+        <!-- Ensure ivy jar is available locally -->
+        <mkdir dir="${ivy.dir}"/>
+        <get src="${ivy.url}" dest="${ivy.jar}" usetimestamp="true" ignoreerrors="false"/>
+
+        <!-- Load Ivy tasks from the downloaded jar -->
+        <path id="ivy.classpath">
+            <pathelement location="${ivy.jar}"/>
+        </path>
+        <taskdef resource="org/apache/ivy/ant/antlib.xml"
+                 uri="antlib:org.apache.ivy.ant"
+                 classpathref="ivy.classpath"/>
+
+        <!-- Resolve and retrieve dependencies -->
         <ivy:settings/>
         <ivy:resolve/>
         <ivy:retrieve pattern="${lib.dir}/[artifact]-[revision].[ext]" sync="true"/>
