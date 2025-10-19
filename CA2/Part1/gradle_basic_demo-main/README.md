@@ -213,7 +213,7 @@ Exemplo de output observado durante a verificação realizada neste trabalho:
         drwxr-xr-x 7 rafael rafael 4096 Oct 12 18:49 ..
         drwxr-xr-x 4 rafael rafael 4096 Oct 12 17:20 main
 
-## Issue 27 - Adicionar task zipBackup (tipo Zip)
+## Issue 27 - Add zipBackup task of type Zip
 
 Objetivo: Criar um ficheiro `backup.zip` contendo uma cópia da árvore de fontes (`src/`). Para garantir que o conteúdo está atualizado, a nova task deve depender da task `backup` (que copia `src` para a pasta `backup/`).
 
@@ -264,7 +264,7 @@ Imagem de suporte (execução da task):
 
 ![Execução da task zipBackup](img/zip/Gradle/gradlew_backupZip.png)
 
-## Issue 28 - Explicar Gradle Wrapper e JDK Toolchain
+## Issue 28 - Explain Gradle Wrapper and JDK Toolchain
 
 Requisitos: Demonstrar como o *Gradle Wrapper* e a *Java Toolchain* asseguram versões consistentes (Gradle 8.9 + Java 17) sem necessidade de instalações manuais divergentes.
 
@@ -697,7 +697,7 @@ Para uma melhor validação podemos abrir o seguinte URL: http://<ip>:8080/emplo
 
 ![Visualização WEB do projeto em execução](img\build_done\buildDone_Running.png)
 
-## Issue 32 - Custom Gradle task deployToDev
+## Issue 32 - Create a custom task named deployToDev
 
 Objetivo: criar uma pipeline de deployment local (DEV) usando apenas tasks built-in do Gradle, com os seguintes passos em sequência:
 
@@ -709,7 +709,6 @@ Objetivo: criar uma pipeline de deployment local (DEV) usando apenas tasks built
 Comando executado e validação (aplica-se à Parte 2 — projeto `gradle_basic_demo-main`):
 
 ```bash
-cd CA2/Part2/gradle_basic_demo-main
 ./gradlew -q deployToDev
 ls -la build/deployment/dev
 echo '--- lib ---'
@@ -719,6 +718,13 @@ ls -la build/deployment/dev/lib
 Output observado:
 
 ![Output of ./gradlew -q deployToDev](img/deployToDev/outputGradlew.png)
+
+Como podemos ver, temos:
+
+- o artefacto da aplicação (payroll.jar) em `build/deployment/dev`;
+- a pasta `lib` com todas as dependências de runtime (Spring Boot, Spring, Hibernate, Tomcat, H2, logging, etc.).
+
+Isto comprova que a pipeline `deployToDev` limpou o destino, copiou o JAR e resolveu/copiou as dependências corretamente.
 
 ## Issue 33 - Create a custom task that depends on installDist and runs the generated distribution scripts
 
@@ -1477,6 +1483,64 @@ Benefícios alcançados:
 - Consistência: a versão do Ant e o nível de Java alvo (17) são controlados pelo projeto.
 - Reprodutibilidade: qualquer membro da equipa obtém o mesmo resultado de build, sem passos manuais prévios.
 - Portabilidade: o Ivy é descarregado automaticamente; não é preciso pré-instalar Ivy ou manter `ant-lib/` no repositório.
+
+## Issue 32 (Ant) - Custom target deployToDev
+
+Objetivo: replicar em Ant a pipeline local de deployment (DEV) com quatro passos encadeados:
+
+- Delete: limpar a pasta de destino (`build/deployment/dev`).
+- Copy: copiar o JAR principal da aplicação para `build/deployment/dev`.
+- Copy: copiar as dependências de runtime (JARs) para `build/deployment/dev/lib`.
+- Copy + ReplaceTokens: copiar ficheiros `*.properties` filtrando tokens (`@projectVersion@`, `@buildTimestamp@`).
+
+Exemplo (trecho do `build.xml` — nomes de propriedades podem variar consoante o teu ficheiro):
+
+        <!-- Diretórios de deployment -->
+        <property name="deploy.env" value="dev"/>
+        <property name="deploy.base" value="build/deployment"/>
+        <property name="deploy.dir" value="${deploy.base}/${deploy.env}"/>
+        <property name="deploy.lib.dir" value="${deploy.dir}/lib"/>
+
+        <!-- Target de deployment para DEV -->
+        <target name="deployToDev" depends="jar, resolve" description="Deploy local (DEV)">
+            <!-- 1) Limpar destino -->
+            <delete dir="${deploy.dir}" quiet="true"/>
+            <mkdir dir="${deploy.lib.dir}"/>
+
+            <!-- 2) Copiar JAR da aplicação -->
+            <copy file="${dist.dir}/${app.jar.name}" tofile="${deploy.dir}/${app.jar.name}"/>
+
+            <!-- 3) Copiar dependências de runtime para lib/ -->
+            <copy todir="${deploy.lib.dir}">
+                <fileset dir="${libs.dir}">
+                    <include name="**/*.jar"/>
+                </fileset>
+            </copy>
+
+            <!-- 4) Copiar configs com substituição de tokens -->
+            <copy todir="${deploy.dir}">
+                <fileset dir="${resources.dir}">
+                    <include name="*.properties"/>
+                </fileset>
+                <filterchain>
+                    <replacetokens beginToken="@" endToken="@">
+                        <token key="projectVersion" value="${project.version}"/>
+                        <token key="buildTimestamp" value="${timestamp}"/>
+                    </replacetokens>
+                </filterchain>
+            </copy>
+        </target>
+
+
+Comando de Execução :
+
+        ant deployToDev
+
+Resultado esperado:
+
+- o JAR da aplicação em `build/deployment/dev` (ex.: `payroll.jar`);
+- a pasta `lib/` com os JARs de runtime (Spring Boot, Spring, Hibernate, Tomcat, H2, logging, etc.);
+- se configurado, os `.properties` no destino sem tokens em claro (após substituição).
 
 ## Issue 33 (Ant) - Create a custom task that depends on installDist and runs the generated distribution scripts
 
