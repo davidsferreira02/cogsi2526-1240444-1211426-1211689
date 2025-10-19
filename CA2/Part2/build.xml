@@ -8,32 +8,7 @@
         uri="antlib:org.apache.ivy.ant"
         classpathref="ivy.classpath" />
 
-    <!-- 1. Global Property Definitions -->
-    <property name="app.name" value="payroll" />
-    <property name="app.version" value="0.0.1-SNAPSHOT" />
-    <property name="main.class" value="payroll.PayrollApplication" />
-
-    <!-- Directories -->
-    <property name="src.dir" location="app/src/main/java" />
-    <property name="resources.dir" location="app/src/main/resources" />
-    <property name="build.dir" location="build" />
-    <property name="build.classes.dir" location="${build.dir}/classes" />
-    <property name="lib.dir" location="lib" />
-    <property name="dist.dir" location="${build.dir}/dist" />
-    <property name="jar.file" location="${dist.dir}/${app.name}.jar" />
-    <property name="javadoc.dir" location="${build.dir}/docs/javadoc" />
-    <property name="javadoc.zip.file"
-        location="${build.dir}/docs/${app.name}-javadoc-${app.version}.zip" />
-
-    <!-- Deployment directories -->
-    <property name="deploy.base.dir" location="${build.dir}/deployment" />
-    <property name="deploy.env" value="dev" />
-    <property name="deploy.dir" location="${deploy.base.dir}/${deploy.env}" />
-    <property name="deploy.lib.dir" location="${deploy.dir}/lib" />
-
-    <!-- Compiler Configuration -->
-    <property name="java.source.version" value="17" />
-    <property name="java.target.version" value="17" />
+    <property file="build.properties"/>
 
     <!-- 2. Classpath Definition -->
     <path id="compile.classpath">
