@@ -1290,3 +1290,60 @@ Código adicionado ao `build.xml`:
 4. Validação: o output observado ao executar `ant runApp` foi equivalente ao obtido com `./gradlew runApp` do ponto de vista funcional, confirmando que a aplicação inicia corretamente e está operacional.
 
 Conclusão: A implementação do alvo `runApp` em Ant fornece uma alternativa válida ao uso do Gradle para compilar e executar a aplicação. A abordagem é explícita (mais verbosa) mas reproduz o mesmo comportamento e output.
+
+## Issue 34 (Ant) - Gerar Javadoc e compactar em ZIP (`javadoc` e `zipJavadoc`)
+
+Esta secção documenta os alvos Ant responsáveis pela geração da documentação Javadoc e pela criação de um ficheiro ZIP contendo essa documentação. Os targets documentados no `build.xml` são `javadoc` e `zipJavadoc`.
+
+### Descrição da tarefa
+
+- `javadoc`: gera a documentação Javadoc a partir do código fonte Java (`app/src/main/java`) para a pasta `${build.dir}/docs/javadoc`.
+- `zipJavadoc`: depende de `javadoc` e cria um ficheiro ZIP (`${build.dir}/docs/${app.name}-javadoc-${app.version}.zip`) com o conteúdo gerado.
+
+Código adicionado ao `build.xml`:
+
+    <!-- Target to generate Javadoc documentation -->
+    <target name="javadoc" depends="compile" description="--> Generates Javadoc documentation">
+        <javadoc destdir="${javadoc.dir}"
+            author="true"
+            version="true"
+            use="true"
+            windowtitle="${app.name} Javadoc"
+            access="package"> <!-- Equivalent to JavadocMemberLevel.PACKAGE -->
+
+            <sourcepath>
+                <pathelement location="${src.dir}" />
+            </sourcepath>
+            <classpath refid="compile.classpath" />
+        </javadoc>
+    </target>
+
+    <!-- Target to create a ZIP of the Javadoc documentation -->
+    <target name="zipJavadoc" depends="javadoc"
+        description="--> Compresses the Javadoc into a ZIP file">
+        <zip destfile="${javadoc.zip.file}" basedir="${javadoc.dir}" />
+        <echo message="Javadoc ZIP created at: ${javadoc.zip.file}" />
+    </target>
+
+### O que foi feito e porquê (resolução do problema)
+
+1. O alvo `javadoc` foi adicionado para criar documentação API automaticamente a partir do código-fonte.
+
+2. O `javadoc` usa explicitamente o `sourcepath` e o `classpath` (referência `compile.classpath`) para assegurar que as classes relacionadas e dependências estão acessíveis durante a geração da documentação.
+
+3. O alvo `zipJavadoc` garante que a documentação gerada é empacotada num único artefacto ZIP colocável (`${javadoc.zip.file}`).
+
+4. Validação: ao correr `ant zipJavadoc` (ou `ant javadoc` seguido de `ant zipJavadoc`) verificou-se que:
+
+    - O directório `${build.dir}/docs/javadoc` foi criado e contém os ficheiros HTML da documentação.
+    - O ficheiro ZIP foi criado em `${build.dir}/docs/${app.name}-javadoc-${app.version}.zip` e contém a árvore de documentação.
+
+Comandos de verificação recomendados:
+
+```bash
+ant zipJavadoc
+ls -la build/docs
+unzip -l build/docs/${app.name}-javadoc-${app.version}.zip
+```
+
+Conclusão: Apesar de exigir maior configuração e verbosidade, os alvos `javadoc` e `zipJavadoc` proporcionam um fluxo simples e repetível para gerar e empacotar a documentação do projecto usando Ant.
