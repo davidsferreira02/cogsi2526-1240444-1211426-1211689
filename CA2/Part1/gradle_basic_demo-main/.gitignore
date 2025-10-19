@@ -3,6 +3,9 @@
 
 .ant/
 
+${backup.dir}/
+antw/
+
 ant-build/
 # Log file
 *.log
