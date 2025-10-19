@@ -6,6 +6,12 @@
 -->
 <ivy-module version="2.0">
     <info organisation="com.example" module="payroll"/>
+
+    <configurations>
+      <conf name="default" visibility="public"/>                
+      <conf name="test" visibility="public" extends="default"/> 
+    </configurations>
+
     <dependencies>
         <!-- Spring Boot Dependencies -->
         <dependency org="org.springframework.boot" name="spring-boot-starter-web" rev="3.2.5"/>
@@ -20,5 +26,6 @@
 
         <!-- Test Dependencies (não utilizadas nos alvos replicados, mas listadas para completude) -->
         <dependency org="org.springframework.boot" name="spring-boot-starter-test" rev="3.2.5" conf="default->master,runtime"/>
+        <dependency org="org.junit.platform" name="junit-platform-launcher" rev="1.10.0" conf="test->default"/>
     </dependencies>
 </ivy-module>

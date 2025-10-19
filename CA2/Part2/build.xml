@@ -15,9 +15,27 @@
         <fileset dir="${lib.dir}" includes="**/*.jar" />
     </path>
 
+    <path id="test.compile.classpath">
+        <pathelement location="${classes.dir}"/>
+        <path refid="compile.classpath"/>
+    </path>
+
+    <path id="test.runtime.classpath">
+        <pathelement location="${test.classes.dir}"/>
+        <pathelement location="${classes.dir}"/>
+        <path refid="compile.classpath"/>
+    </path>
+
+    <path id="integrationTest.runtime.classpath">
+        <pathelement location="${integrationTest.classes.dir}"/>
+        <pathelement location="${classes.dir}"/>
+        <path refid="compile.classpath"/>
+    </path>
+
     <!-- Target to resolve dependencies -->
     <target name="resolve" description="--> Resolves project dependencies with Ivy">
-        <ivy:retrieve pattern="${lib.dir}/[type]s/[artifact]-[revision](-[classifier]).[ext]" />
+        <ivy:retrieve conf="default,test"
+                      pattern="${lib.dir}/[type]s/[artifact]-[revision](-[classifier]).[ext]"/>
     </target>
 
     <!-- Target to clean the project -->
@@ -47,6 +65,50 @@
         </copy>
     </target>
 
+    <target name="test-prepare" depends="compile">
+        <mkdir dir="${test.classes.dir}"/>
+        <mkdir dir="${test.reports.dir}"/>
+        <copy todir="${test.classes.dir}" failonerror="false">
+            <fileset dir="${test.resources.dir}" erroronmissingdir="false"/>
+        </copy>
+    </target>
+
+    <target name="test-compile" depends="test-prepare" description="Compile test sources">
+        <javac srcdir="${test.src.dir}"
+               destdir="${test.classes.dir}"
+               includeantruntime="false"
+               release="${java.source.version}"
+               encoding="${encoding}">
+            <classpath refid="test.compile.classpath"/>
+            <compilerarg value="-Xlint:deprecation"/>
+            <compilerarg value="-Xlint:unchecked"/>
+        </javac>
+    </target>
+
+    <target name="integrationTest-prepare" depends="compile">
+        <mkdir dir="${integrationTest.classes.dir}"/>
+        <mkdir dir="${integrationTest.reports.dir}"/>
+    
+        <copy todir="${integrationTest.classes.dir}" failonerror="false">
+            <fileset dir="${integrationTest.resources.dir}" erroronmissingdir="false"/>
+        </copy>
+    </target>
+
+
+    <target name="integrationTest-compile" depends="integrationTest-prepare" description="Compile test sources">
+        <javac srcdir="${integrationTest.src.dir}"
+               destdir="${integrationTest.classes.dir}"
+               includeantruntime="false"
+               release="${java.source.version}"
+               encoding="${encoding}">
+            <classpath refid="test.compile.classpath"/>
+            <compilerarg value="-Xlint:deprecation"/>
+            <compilerarg value="-Xlint:unchecked"/>
+        </javac>
+    </target>
+
+
+
     <!-- Target to create the JAR file -->
     <target name="jar" depends="compile" description="--> Creates the executable JAR file">
         <jar destfile="${jar.file}" basedir="${build.classes.dir}">
@@ -67,6 +129,35 @@
             </classpath>
         </java>
     </target>
+
+    <target name="test" depends="test-compile" description="Run unit tests (JUnit 5)">
+        <mkdir dir="${test.reports.dir}"/>
+        <junitlauncher haltonfailure="true">
+            <classpath refid="test.runtime.classpath"/>
+            <listener type="legacy-xml" sendSysOut="true" sendSysErr="true"/>
+            <testclasses outputdir="${test.reports.dir}">
+                <fileset dir="${test.classes.dir}">
+                    <include name="${test.includes}"/>
+                    <exclude name="${test.excludes}"/>
+                </fileset>
+            </testclasses>
+        </junitlauncher>
+    </target>
+    
+    <target name="integrationTest" depends="integrationTest-compile, test" description="Run unit tests (JUnit 5)">
+        <mkdir dir="${integrationTest.reports.dir}"/>
+        <junitlauncher haltonfailure="true">
+            <classpath refid="integrationTest.runtime.classpath"/>
+            <listener type="legacy-xml" sendSysOut="true" sendSysErr="true"/>
+            <testclasses outputdir="${integrationTest.reports.dir}">
+                <fileset dir="${integrationTest.classes.dir}">
+                    <include name="${integrationTest.includes}"/>
+                    <exclude name="${integrationTest.excludes}"/>
+                </fileset>
+            </testclasses>
+        </junitlauncher>
+    </target>
+    
 
     <!-- Target to generate Javadoc documentation -->
     <target name="javadoc" depends="compile" description="--> Generates Javadoc documentation">
