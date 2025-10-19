@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+
+# Ant Wrapper (antw): Bootstraps a pinned Apache Ant version locally, then runs it.
+# Usage:
+#   ./antw -version
+#   ./antw javaToolchain
+#
+# Configuration via environment variables:
+#   ANT_VERSION   - Ant version to use (default: 1.10.15)
+#   WRAPPER_DIR   - Directory for cached downloads (default: .ant/wrapper)
+
+set -euo pipefail
+
+ANT_VERSION="${ANT_VERSION:-1.10.15}"
+WRAPPER_DIR="${WRAPPER_DIR:-.ant/wrapper}"
+ANT_DIR="${WRAPPER_DIR}/apache-ant-${ANT_VERSION}"
+ANT_ZIP="apache-ant-${ANT_VERSION}-bin.zip"
+
+mkdir -p "${WRAPPER_DIR}"
+
+if [ ! -d "${ANT_DIR}" ]; then
+  echo "[antw] Apache Ant ${ANT_VERSION} not found locally. Downloading..." >&2
+
+  ZIP_PATH="${WRAPPER_DIR}/${ANT_ZIP}"
+  # Try canonical downloads site first, then the archive as fallback
+  for URL in \
+    "https://downloads.apache.org/ant/binaries/${ANT_ZIP}" \
+    "https://archive.apache.org/dist/ant/binaries/${ANT_ZIP}"; do
+    if command -v curl >/dev/null 2>&1; then
+      echo "[antw] Attempting: ${URL}" >&2
+      if curl -fL "${URL}" -o "${ZIP_PATH}"; then
+        break
+      fi
+    elif command -v wget >/dev/null 2>&1; then
+      echo "[antw] Attempting: ${URL}" >&2
+      if wget -O "${ZIP_PATH}" "${URL}"; then
+        break
+      fi
+    else
+      echo "[antw] Neither curl nor wget is available; please install one of them." >&2
+      exit 1
+    fi
+  done
+
+  if [ ! -s "${ZIP_PATH}" ]; then
+    echo "[antw] Failed to download ${ANT_ZIP}." >&2
+    exit 1
+  fi
+
+  echo "[antw] Extracting ${ANT_ZIP} to ${WRAPPER_DIR}..." >&2
+  if command -v unzip >/dev/null 2>&1; then
+    unzip -q -o "${ZIP_PATH}" -d "${WRAPPER_DIR}"
+  else
+    echo "[antw] 'unzip' not found; please install it." >&2
+    exit 1
+  fi
+fi
+
+export ANT_HOME="${ANT_DIR}"
+export PATH="${ANT_HOME}/bin:${PATH}"
+
+exec ant "$@"

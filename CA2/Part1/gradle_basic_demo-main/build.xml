@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="gradle_basic_demo" basedir="." default="main"
+         xmlns:ivy="antlib:org.apache.ivy.ant">
+
+    <!-- ===== Load Ivy (ant-lib/ivy-*.jar) ===== -->
+    <path id="ivy.classpath">
+        <fileset dir="ant-lib" includes="ivy-*.jar" erroronmissingdir="false"/>
+    </path>
+    <taskdef resource="org/apache/ivy/ant/antlib.xml"
+             uri="antlib:org.apache.ivy.ant"
+             classpathref="ivy.classpath"/>
+
+    <!-- ===== Properties ===== -->
+    <!-- Import environment variables into the 'env.' namespace (e.g., env.JAVA_HOME) -->
+    <property environment="env"/>
+    <property name="src.dir"       value="src/main/java"/>
+    <property name="resources.dir" value="src/main/resources"/>
+    <property name="lib.dir"       value="libs"/>
+
+    <property name="build.dir"     value="ant-build"/>
+    <property name="classes.dir"   value="${build.dir}/classes"/>
+    <property name="jar.dir"       value="${build.dir}/jar"/>
+    <property name="dist.dir"      value="${build.dir}/dist"/>
+    <property name="backup.dir"    value="backup"/>
+
+    <property name="encoding"      value="UTF-8"/>
+
+    <!-- Main classes -->
+    <property name="app.main"     value="basic_demo.App"/>
+    <property name="client.main"  value="basic_demo.ChatClientApp"/>
+    <property name="server.main"  value="basic_demo.ChatServerApp"/>
+
+    <!-- ===== Ivy dependencies ===== -->
+    <target name="deps" description="Resolve and retrieve dependencies via Ivy">
+        <ivy:settings/>
+        <ivy:resolve/>
+        <ivy:retrieve pattern="libs/[artifact]-[revision].[ext]" sync="true"/>
+    </target>
+
+    <!-- ===== Classpath ===== -->
+    <path id="compile.classpath">
+        <fileset dir="${lib.dir}" includes="**/*.jar" erroronmissingdir="false"/>
+    </path>
+
+    <!-- Compute MANIFEST Class-Path -->
+    <pathconvert property="manifest.classpath" pathsep=" ">
+        <path>
+            <fileset dir="${lib.dir}" includes="**/*.jar" erroronmissingdir="false"/>
+        </path>
+        <chainedmapper>
+            <flattenmapper/>
+            <globmapper from="*" to="libs/*"/>
+        </chainedmapper>
+    </pathconvert>
+
+    <!-- ===== Build Targets ===== -->
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+    </target>
+
+    <target name="prepare">
+        <mkdir dir="${classes.dir}"/>
+        <mkdir dir="${jar.dir}"/>
+        <mkdir dir="${dist.dir}"/>
+    </target>
+
+    <target name="resources" depends="prepare" description="Copy non-Java resources">
+        <copy todir="${classes.dir}">
+            <fileset dir="${resources.dir}" erroronmissingdir="false"/>
+        </copy>
+    </target>
+
+    <target name="compile" depends="deps,prepare,resources" description="Compile sources">
+        <javac srcdir="${src.dir}" destdir="${classes.dir}" includeantruntime="false"
+               release="17" encoding="${encoding}">
+            <classpath refid="compile.classpath"/>
+            <compilerarg value="-Xlint:deprecation"/>
+            <compilerarg value="-Xlint:unchecked"/>
+        </javac>
+    </target>
+
+    <!-- ===== Macro: make runnable JAR ===== -->
+    <macrodef name="make-runnable-jar">
+        <attribute name="mainclass"/>
+        <attribute name="name"/>
+        <sequential>
+            <jar destfile="${jar.dir}/@{name}.jar" basedir="${classes.dir}">
+                <manifest>
+                    <attribute name="Main-Class" value="@{mainclass}"/>
+                    <attribute name="Class-Path" value="${manifest.classpath}"/>
+                </manifest>
+            </jar>
+            <copy file="${jar.dir}/@{name}.jar" todir="${dist.dir}"/>
+            <copy todir="${dist.dir}/libs" flatten="false">
+                <fileset dir="${lib.dir}" includes="**/*.jar" erroronmissingdir="false"/>
+            </copy>
+        </sequential>
+    </macrodef>
+
+    <!-- ===== JARs ===== -->
+    <target name="jar-app"    depends="compile"><make-runnable-jar name="app"    mainclass="${app.main}"/></target>
+    <target name="jar-client" depends="compile"><make-runnable-jar name="client" mainclass="${client.main}"/></target>
+    <target name="jar-server" depends="compile"><make-runnable-jar name="server" mainclass="${server.main}"/></target>
+
+    <target name="jar" depends="jar-app,jar-client,jar-server" description="Build all jars"/>
+
+    <!-- ===== Run from dist/ ===== -->
+    <target name="run-app" depends="jar-app">
+        <java jar="${dist.dir}/app.jar" fork="true" failonerror="true"/>
+    </target>
+
+    <target name="run-client" depends="jar-client">
+        <java jar="${dist.dir}/client.jar" fork="true" failonerror="true"/>
+    </target>
+
+    <target name="run-server" depends="jar-server">
+        <java jar="${dist.dir}/server.jar" fork="true" failonerror="true">
+            <arg value="59001"/>
+        </java>
+    </target>
+
+    <!-- Convenience alias -->
+    <target name="run" depends="run-app" description="Alias to run the main application"/>
+
+    <target name="clean-build" depends="clean,jar"/>
+    <target name="main" depends="clean,jar"/>
+
+    <!-- ===== Backup and Zip tasks ===== -->
+    <target name="backup" description="Copy sources to backup/ folder">
+        <mkdir dir="${backup.dir}"/>
+        <copy todir="${backup.dir}">
+            <fileset dir="src"/>
+        </copy>
+    </target>
+
+    <target name="zipBackup" depends="backup" description="Create backup.zip from backup/ folder">
+        <delete file="backup.zip" quiet="true"/>
+        <zip destfile="backup.zip" basedir="${backup.dir}"/>
+    </target>
+
+    
+
+    <target name="javaToolchain" description="Prints Java and Ant environment info">
+        <echo>Java version (java.version): ${ant.java.version}</echo>
+        <echo>JAVA_HOME: ${env.JAVA_HOME}</echo>
+        <echo>javac -version:</echo>
+        <exec executable="javac" failonerror="false">
+            <arg value="-version"/>
+        </exec>
+        <echo>java -version:</echo>
+        <exec executable="java" failonerror="false">
+            <arg value="-version"/>
+        </exec>
+        <echo>Ant version: ${ant.version}</echo>
+        <echo>java.home (runtime): ${java.home}</echo>
+        <echo>user.home: ${user.home}</echo>
+    </target>
+
+    <!-- ===== Ant-only "Wrapper" (no external script) ===== -->
+    <!-- Configuration: pinned Ant version and download locations -->
+    <property name="wrapper.ant.version" value="1.10.15"/>
+    <property name="wrapper.dir" value=".ant/wrapper"/>
+    <property name="wrapper.ant.zip" value="apache-ant-${wrapper.ant.version}-bin.zip"/>
+    <property name="wrapper.ant.url.primary" value="https://downloads.apache.org/ant/binaries/${wrapper.ant.zip}"/>
+    <property name="wrapper.ant.url.fallback" value="https://archive.apache.org/dist/ant/binaries/${wrapper.ant.zip}"/>
+    <property name="wrapper.ant.dir" value="${wrapper.dir}/apache-ant-${wrapper.ant.version}"/>
+
+    <target name="wrapper-prepare">
+        <mkdir dir="${wrapper.dir}"/>
+        
+        <get src="${wrapper.ant.url.primary}" dest="${wrapper.dir}/${wrapper.ant.zip}"
+             usetimestamp="true" ignoreerrors="true"/>
+        
+        <available file="${wrapper.dir}/${wrapper.ant.zip}" property="wrapper.ant.zip.available"/>
+    
+        <antcall target="wrapper-download-fallback"/>
+
+        <unzip src="${wrapper.dir}/${wrapper.ant.zip}" dest="${wrapper.dir}" overwrite="true"/>
+
+        <chmod file="${wrapper.ant.dir}/bin/ant" perm="755" verbose="true"/>
+    </target>
+
+   
+    <target name="wrapper-download-fallback" unless="wrapper.ant.zip.available">
+        <echo>Primary download not found; attempting fallback: ${wrapper.ant.url.fallback}</echo>
+        <get src="${wrapper.ant.url.fallback}" dest="${wrapper.dir}/${wrapper.ant.zip}"
+             usetimestamp="true"/>
+    </target>
+
+    <target name="wrapper" depends="wrapper-prepare" unless="usingWrappedAnt" description="Runs a target using a pinned Ant version">
+        <echo>Re-executing with Ant ${wrapper.ant.version} from ${wrapper.ant.dir}</echo>
+       
+        <condition property="_wrappedTarget" value="${wrappedTarget}" else="help">
+            <isset property="wrappedTarget"/>
+        </condition>
+        <exec executable="${wrapper.ant.dir}/bin/ant" failonerror="true">
+            <arg value="-f"/>
+            <arg value="${ant.file}"/>
+            <arg value="-DusingWrappedAnt=true"/>
+            
+            <arg value="${_wrappedTarget}"/>
+        </exec>
+    </target>
+
+    
+</project>

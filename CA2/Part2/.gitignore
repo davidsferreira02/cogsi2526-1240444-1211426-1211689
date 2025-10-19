@@ -3,3 +3,11 @@
 
 # Ignore Gradle build output directory
 build
+
+# Ignore library dependencies directory
+lib/
+libs/
+
+ant-build/
+any-lib/
+.ant/

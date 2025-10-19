@@ -1072,3 +1072,178 @@ Tendo já verificado os resultados dos testes individualmente, podemos executar 
 **NOTA**: O *output* foi abreviado para uma melhor apresentação dos resultados.
 
 Como podemos observar o *build* do projeto é bem sucedido e a execução dos testes unitários é realizada antes da execução dos testes de integração.
+
+## Ant
+
+Esta secção foca-se nas diferenças e similaridades entre Gradle e Ant, seguida por um plano prático para replicar — com Ant — as tarefas que implementámos com Gradle neste projecto.
+
+### 1. Gradle vs. Ant: Análise Comparativa
+
+| Característica | Gradle | Apache Ant |
+|---|---|---|
+| Linguagem do Build Script | DSL (Groovy ou Kotlin). Concisa e declarativa. | XML. Verboso e imperativo. |
+| Paradigma | Declarativo e por convenção: foca-se no "o quê" e assume estruturas padrão (ex: `src/main/java`). | Imperativo e por configuração: foca-se no "como" e exige passos explícitos. |
+| Gestão de Dependências | Nativa e integrada (resolução transitiva via repositórios como Maven Central). | Não nativa: normalmente usa-se Apache Ivy (ficheiro `ivy.xml`) para resolução automática; sem Ivy a gestão é manual (JARs em `lib/`). |
+| Ciclo de Vida e Grafos | Usa um DAG (grafo acíclico dirigido) para determinar ordem de execução e suporta builds incrementais/daemon. | Baseado em alvos/targets com dependências explícitas; menos sofisticado em otimizações de execução incremental. |
+| Extensibilidade | Rico ecossistema de plugins (ex.: Spring Boot plugin que adiciona `bootRun`, etc.). | Extensível criando targets e macros; integração por bibliotecas (Ivy, tasks em Java) — mais manual. |
+| Performance | Optimizações como Gradle Daemon e cache de configuração tornam-no normalmente mais rápido. | Mais lento por omissão; cada execução tende a iniciar um novo processo Java e reexecuta alvos não marcado como incremental. |
+
+### 2. Similaridades Principais
+
+- Automação de Build: ambos automatizam compilação, teste, empacotamento e deploy.
+- Baseados na JVM: escritos em Java e executados sobre a JVM, logo multiplataforma.
+- Unidade de trabalho: Gradle tem "tasks" e Ant tem "targets" — ambos representam ações encadeáveis.
+
+### 3. Plano de Migração para Ant
+
+Para replicar as tasks  usadas no `build.gradle` com Ant seguiremos estes passos gerais:
+
+1. Estrutura do projeto e ficheiros iniciais
+
+     - Criar um ficheiro `build.xml` na raiz do projecto.
+     - Criar um ficheiro `ivy.xml` para declarar dependências do projecto.
+
+2. Definir propriedades e classpath
+
+     - No `build.xml` definir propriedades globais para diretórios (`src.dir`, `build.dir`, `dist.dir`, etc.) para facilitar manutenção.
+     - Definir um path `classpath` que inclua os JARs descarregados pelo Ivy.
+
+3. Configurar gestão de dependências com Ivy
+
+     - Criar um alvo `resolve` ou `deps` que use Ivy para ler o `ivy.xml`, descarregar dependências para uma pasta (`lib/`) e disponibilizá-las para o `classpath`.
+
+4. Criar alvos base do build
+
+     - `clean`: apagar diretórios de build/saída.
+     - `init`/`prepare`: criar diretórios necessários.
+     - `compile`: compilar código-fonte Java com `<javac>` usando o `classpath` com dependências.
+     - `jar`: empacotar classes compiladas num JAR, incluindo o atributo `Main-Class` no manifesto.
+
+5. Implementar as tasks solicitadas
+
+     - Definir alvos
+     - Definir ordem de execução e dependências entre alvos com `depends`.
+     - Usar `<copy>`, `<zip>`, `<java>` para replicar funcionalidades como deploy, backup, execução de aplicações.
+
+Com este plano conseguimos traduzir a lógica declarativa do Gradle para passos explícitos e imperativos em Ant, mantendo a mesma funcionalidade.
+
+
+### Pré‑requisitos
+
+- Ant instalado (macOS via Homebrew: `brew install ant`).
+- Java 17 disponível no PATH (o `build.xml` compila com `release="17"`).
+
+### Configurar Ivy (uma vez)
+
+O `build.xml` usa Ivy para resolver dependências. O jar do Ivy é esperado em `ant-lib/`.
+
+                mkdir -p ant-lib
+                curl -L -o ant-lib/ivy-2.5.2.jar \
+                    https://repo1.maven.org/maven2/org/apache/ivy/ivy/2.5.2/ivy-2.5.2.jar
+
+Alternativa via Homebrew (se instalou o pacote `ivy`):
+
+    brew install ivy
+    mkdir -p ant-lib
+    ln -sf "$(ls $(brew --prefix ivy)/libexec/ivy-*.jar | tail -1)" ant-lib/
+
+### Alvos principais (build.xml)
+
+- `deps`: resolve e descarrega dependências com Ivy para `libs/`.
+- `clean-build`: limpa e compila/empacota; gera jars em `ant-build/dist/`.
+- `run-app`, `run-client`, `run-server`: executam os jars criados.
+- `run`: atalho para `run-app` (alias adicionado).
+
+Comandos de exemplo:
+
+    ant deps
+    ant clean-build
+    ant run
+
+### Issue 27 (Ant) — Adicionar alvo zipBackup (depende de backup)
+
+Objetivo: criar um ficheiro `backup.zip` a partir da pasta `backup/`, garantindo antes a cópia de `src/` para `backup/`.
+
+Alterações no `build.xml` (adicionadas):
+
+        <!-- Propriedade para a pasta de backup -->
+        <property name="backup.dir" value="backup"/>
+
+        <!-- Copia src/ para backup/ -->
+        <target name="backup" description="Copy sources to backup/ folder">
+            <mkdir dir="${backup.dir}"/>
+            <copy todir="${backup.dir}">
+                <fileset dir="src"/>
+            </copy>
+        </target>
+
+        <!-- Cria backup.zip a partir de backup/ -->
+        <target name="zipBackup" depends="backup" description="Create backup.zip from backup/ folder">
+            <delete file="backup.zip" quiet="true"/>
+            <zip destfile="backup.zip" basedir="${backup.dir}"/>
+        </target>
+
+Execução e validação (comando e excerto do output real obtido):
+
+    ant zipBackup
+
+          backup:
+                 [copy] Copying 1 file to .../CA2/Part1/gradle_basic_demo-main/backup
+
+          zipBackup:
+              [delete] Deleting: .../CA2/Part1/gradle_basic_demo-main/backup.zip
+                  [zip] Building zip: .../CA2/Part1/gradle_basic_demo-main/backup.zip
+
+          BUILD SUCCESSFUL
+          Total time: 0 seconds
+
+Resultado esperado:
+
+- Pasta `backup/` contendo cópia de `src/`.
+- Artefacto `backup.zip` na raiz do projeto.
+
+## Issue 33 (Ant) - Create a custom task that depends on installDist and runs the generated distribution scripts
+
+Este *issue* tem como objetivo demonstrar que a execução completa (compilar + executar) pode ser feita com Ant e que o resultado funcional final é equivalente ao obtido com Gradle.
+
+### Descrição da tarefa
+
+- Criar um alvo `runApp` no `build.xml` que dependa dos alvos de compilação (`compile` / `jar`) e que utilize a task `<java>` para executar a classe principal da aplicação.
+- Garantir que o classpath usado pela task `<java>` inclui as classes compiladas e as dependências resolvidas (via Ivy ou jars locais em `lib/`).
+
+Código adicionado ao `build.xml`:
+
+    <target name="compile" depends="init, resolve" description="--> Compiles the Java source code">
+        <javac srcdir="${src.dir}"
+            destdir="${build.classes.dir}"
+            classpathref="compile.classpath"
+            includeantruntime="false"
+            source="${java.source.version}"
+            target="${java.target.version}" />
+        <!-- Copies resources (e.g., application.properties) to the classes folder -->
+        <copy todir="${build.classes.dir}" failonerror="false">
+            <fileset dir="${resources.dir}" erroronmissingdir="false" />
+        </copy>
+    </target>
+
+    <!-- Target to run the application -->
+    <target name="runApp" depends="jar" description="--> Executes the Spring Boot application">
+        <java classname="${main.class}" fork="true">
+            <classpath>
+                <pathelement location="${jar.file}" />
+                <path refid="compile.classpath" />
+            </classpath>
+        </java>
+    </target>
+
+### O que foi feito e porquê (resolução do problema)
+
+1. Foi implementado o alvo `runApp` no `build.xml` para que a aplicação possa ser compilada e executada com Ant, sem depender do wrapper do Gradle.
+
+2. A task `<java>` foi usada com `fork=true` para isolar o processo da VM de execução do Ant, garantindo comportamento semelhante ao do Gradle/JavaExec. O classpath foi explicitamente configurado para incluir as classes produzidas por `<javac>` e as bibliotecas em `lib/` (obtidas através da target `deps` que usa Ivy), garantindo que todas as dependências necessárias estão presentes em tempo de execução.
+
+3. Esta solução replica por etapas a lógica do Gradle (`build` seguido de `runApp`) com alvos Ant: `deps` -> `compile` -> `runApp`. A ordenação explícita de dependências entre alvos assegura que a compilação e a resolução de dependências ocorrem antes da execução.
+
+4. Validação: o output observado ao executar `ant runApp` foi equivalente ao obtido com `./gradlew runApp` do ponto de vista funcional, confirmando que a aplicação inicia corretamente e está operacional.
+
+Conclusão: A implementação do alvo `runApp` em Ant fornece uma alternativa válida ao uso do Gradle para compilar e executar a aplicação. A abordagem é explícita (mais verbosa) mas reproduz o mesmo comportamento e output.
