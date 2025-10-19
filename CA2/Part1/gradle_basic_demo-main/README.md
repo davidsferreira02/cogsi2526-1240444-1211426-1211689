@@ -1644,3 +1644,145 @@ unzip -l build/docs/${app.name}-javadoc-${app.version}.zip
 ```
 
 Conclusão: Apesar de exigir maior configuração e verbosidade, os alvos `javadoc` e `zipJavadoc` proporcionam um fluxo simples e repetível para gerar e empacotar a documentação do projecto usando Ant.
+
+## Issue 35 (Ant) - Criar *Source Set* para testes de integração
+
+Neste caso, o ***Ant*** não têm nenhuma ferramenta nativa que seja equivalente ao *Source Set* que encontramos em *Gradle*. Contudo, a execução dos testes de integração é possível, utilizando ferramentas de ordenação de tarefas.
+
+Antes da execução dos testes de integração foi necessário implementar um *target* que executasse os testes unitários, este processo foi bastante semelhante ao descrito no *Issue* 25. Posto isto, irá ser documentado apenas a implementação das ferramentas para executar e ordenar os testes de integração.
+
+Para se executar os testes de implementação, tal como nos testes unitários, foi necessário acrescentar variáveis ao ficheiro de propriedades, dependências ao ficheiro ***ivy.xml*** e *targets* ao ficheiro ***build.xml***.
+
+1. Variáveis adicionadas ao ficheiro de propriedades:
+
+         ===== Integration Tests =====
+        integrationTest.src.dir = app/src/integrationTest/java
+        integrationTest.resources.dir = app/src/integrationTest/resources
+        integrationTest.classes.dir = ${build.dir}/integrationTest-classes
+        integrationTest.reports.dir = ${build.dir}/integrationTest-reports
+        integrationTest.includes = **/*IT.class
+        integrationTest.excludes =
+
+2. Dependências adicionadas ao ficheiro ***ivy.xml***:
+
+        <dependencies>
+            <dependency org="org.springframework.boot" name="spring-boot-starter-web" rev="3.2.5"/>
+            <dependency org="org.springframework.boot" name="spring-boot-starter-data-jpa" rev="3.2.5"/>
+            <dependency org="org.springframework.boot" name="spring-boot-starter-hateoas" rev="3.2.5"/>
+            <dependency org="com.google.guava" name="guava" rev="32.1.2-jre"/>
+            <dependency org="com.h2database" name="h2" rev="2.2.224" conf="default->master,runtime"/>
+            <dependency org="org.springframework.boot" name="spring-boot-starter-test" rev="3.2.5" conf="default->master,runtime"/>
+            <dependency org="org.junit.platform" name="junit-platform-launcher" rev="1.10.0" conf="test->default"/>
+        </dependencies>
+
+3. *Targets* adicionados ao ficheiro ***build.xml***
+
+        <path id="integrationTest.runtime.classpath">
+            <pathelement location="${integrationTest.classes.dir}"/>
+            <pathelement location="${classes.dir}"/>
+            <path refid="compile.classpath"/>
+        </path>
+
+        -------------------------------------------------------------------------
+
+        <target name="integrationTest-prepare" depends="compile">
+            <mkdir dir="${integrationTest.classes.dir}"/>
+            <mkdir dir="${integrationTest.reports.dir}"/>
+
+            <copy todir="${integrationTest.classes.dir}" failonerror="false">
+                <fileset dir="${integrationTest.resources.dir}" erroronmissingdir="false"/>
+            </copy>
+        </target>
+
+        <target name="integrationTest-compile" depends="integrationTest-prepare" description="Compile test sources">
+            <javac srcdir="${integrationTest.src.dir}"
+                   destdir="${integrationTest.classes.dir}"
+                   includeantruntime="false"
+                   release="${java.source.version}"
+                   encoding="${encoding}">
+                <classpath refid="test.compile.classpath"/>
+                <compilerarg value="-Xlint:deprecation"/>
+                <compilerarg value="-Xlint:unchecked"/>
+            </javac>
+        </target>
+
+        -------------------------------------------------------------------------
+
+        <target name="integrationTest" depends="integrationTest-compile, test" description="Run unit tests (JUnit 5)">
+            <mkdir dir="${integrationTest.reports.dir}"/>
+            <junitlauncher haltonfailure="true">
+                <classpath refid="integrationTest.runtime.classpath"/>
+                <listener type="legacy-xml" sendSysOut="true" sendSysErr="true"/>
+                <testclasses outputdir="${integrationTest.reports.dir}">
+                    <fileset dir="${integrationTest.classes.dir}">
+                        <include name="${integrationTest.includes}"/>
+                        <exclude name="${integrationTest.excludes}"/>
+                    </fileset>
+                </testclasses>
+            </junitlauncher>
+        </target>
+    
+O primeiro bloco define o classpath dos testes de integração, incluindo as classes de teste, as classes da aplicação e as dependências externas.
+O segundo prepara o ambiente, criando as pastas necessárias e compilando o código dos testes.
+Por fim, o último *target* executa os testes de integração, gerando os relatórios de resultados.
+
+Posto isto, resta validar se os testes são compilados corretamente, executados na ordem certa e se têm um resultado positivo.
+
+            ---------------------------------------------------------------------
+            |                  |            modules            ||   artifacts   |
+            |       conf       | number| search|dwnlded|evicted|| number|dwnlded|
+            ---------------------------------------------------------------------
+            |      default     |  121  |   0   |   0   |   22  ||  107  |   0   |
+            |       test       |  123  |   0   |   0   |   23  ||  108  |   0   |
+            ---------------------------------------------------------------------
+    [ivy:retrieve] :: retrieving :: com.example#payroll
+    [ivy:retrieve]  confs: [default, test]
+    [ivy:retrieve]  108 artifacts copied, 0 already retrieved (65429kB/979ms)
+
+    compile:
+        [javac] Compiling 15 source files to /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part2/build/classes
+        [javac] warning: [options] system modules path not set in conjunction with -source 17
+        [javac] 1 warning
+
+    integrationTest-prepare:
+        [mkdir] Created dir: /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part2/build/integrationTest-classes
+        [mkdir] Created dir: /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part2/build/integrationTest-reports
+
+    integrationTest-compile:
+        [javac] Compiling 2 source files to /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part2/build/integrationTest-classes
+
+    test-prepare:
+        [mkdir] Created dir: /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part2/build/test-classes
+        [mkdir] Created dir: /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part2/build/test-reports
+
+    test-compile:
+        [javac] Compiling 2 source files to /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part2/build/test-classes
+
+    test:
+    [junitlauncher] Running payroll.EmployeeTest
+    [junitlauncher] Running payroll.OrderTest
+
+    integrationTest:
+    [junitlauncher] Running payroll.EmployeeRepositoryIT
+    OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+    [junitlauncher] Running payroll.OrderRepositoryIT
+
+    BUILD SUCCESSFUL
+    Total time: 21 seconds
+    2025-10-19T17:56:15.344Z  INFO 31318 --- [ionShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+    Hibernate: drop table if exists customer_order cascade 
+    Hibernate: drop table if exists employee cascade 
+    Hibernate: drop sequence if exists customer_order_seq
+    Hibernate: drop sequence if exists employee_seq
+
+Como podemos ver, os testes são compilados com sucesso e executam na ordem que é suposto. 
+
+**NOTA**: Os avisos mostrados são apenas informativos: o primeiro indica que estamos a executar testes que iniciam uma aplicação *Spring Boot* dentro da JVM. O segundo informa que o contexto dos testes está a ser encerrado e que todos os recursos estão a ser limpos.
+
+Verificando a compilação e ordenação dos testes resta apenas validar o seu resultado através dos reports gerados.
+
+    <testsuite name="payroll.OrderRepositoryIT" time="0.034" timestamp="2025-10-19T17:56:13" tests="1" failures="0" skipped="0" aborted="0">
+
+    <testsuite name="payroll.EmployeeRepositoryIT" time="6.456" timestamp="2025-10-19T17:56:10" tests="1" failures="0" skipped="0" aborted="0">
+
+Como podemos, ver os testes obtiveram um resultado positivo, garantindo assim o objetivo do *issue*, apesar de em *Ant* não existir algo equivalente a *Source Sets*.
