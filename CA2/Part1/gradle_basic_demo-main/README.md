@@ -151,7 +151,7 @@ Posto isto, para correr a *task* é necessário correr o comando ***./gradlew te
 
 Para além de conseguirmos ver que todo o build foi sucedido, podemos ainda verificar um ficheiro HTML criado automaticamente onde temos toda a informação relativa ao resultado dos testes, como revela a seguinte imagem.
 
-![Resultado dos Testes](img\taskTest.png)
+![Resultado dos Testes](img\taskTest\taskTest.png)
 
 ## Issue 26 - Add Gradle task backup to copy src to backup/
 
