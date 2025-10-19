@@ -225,13 +225,28 @@ Implementação adicionada ao `build.gradle`:
     }
 
     task zipBackup(type: Zip) {
-            group = "COGSI"
+            group = "DevOps"
             description = "Creates a zip archive of the backup directory (depends on backup)"
             dependsOn backup
             from 'backup'
             archiveFileName = 'backup.zip'
             destinationDirectory = file('.')
     }
+```gradle
+task backup(type: Copy) {
+        from 'src'
+        into 'backup'
+}
+
+task zipBackup(type: Zip) {
+        group = "DevOps"
+        description = "Creates a zip archive of the backup directory (depends on backup)"
+        dependsOn backup
+        from 'backup'
+        archiveFileName = 'backup.zip'
+        destinationDirectory = file('.')
+}
+```
 
 Explicação técnica:
 
@@ -242,6 +257,7 @@ Explicação técnica:
 5. `destinationDirectory = file('.')` coloca o artefacto no diretório do projeto (poderia ser `build/distributions` se quiséssemos isolar outputs).
 
 Execução:
+
 ```
 ./gradlew zipBackup
 ```
@@ -262,7 +278,7 @@ Artefactos resultantes:
 
 Imagem de suporte (execução da task):
 
-![Execução da task zipBackup](img/zip/Gradle/gradlew_backupZip.png)
+![Execução da task zipBackup](img/zip/gradlew_backupZip.png)
 
 ## Issue 28 - Explicar Gradle Wrapper e JDK Toolchain
 
@@ -293,25 +309,32 @@ tasks.register('javaToolchain') {
 }
 ```
 
-Execução:
+Execução silenciosa:
 
 ```
 ./gradlew -q javaToolchain
 ```
 
-Output:
+Output recolhido (exemplo):
 
-![Gradle Wrapper & Toolchain (Parte 1)](img/gradle_wrapper&jdk_toolchain/Gradle/gradlewOutputPart1.png)
-![Gradle Wrapper & Toolchain (Parte 2)](img/gradle_wrapper&jdk_toolchain/Gradle/gradlewOutputPart2.png)
-
+```
+Java Toolchain (languageVersion): 17
+Current JVM version: 17.0.14
+Gradle version: 8.9 (Wrapper governs this)
+JAVA_HOME: /Users/<user>/.sdkman/candidates/java/current
+```
 
 Análise:
 
 1. O Wrapper (`gradlew`) descarrega / utiliza a distribuição exata de Gradle definida em `gradle/wrapper/gradle-wrapper.properties`, evitando discrepâncias de versões entre máquinas.
 2. A *toolchain* declara a versão alvo de Java (17). O Gradle tenta localizar internamente um JDK compatível; quando configurado com *provisioning*, pode mesmo descarregar (dependendo das features usadas).
 3. A compilação fica isolada de *overrides* acidentais do `JAVA_HOME` ou de JDKs mais recentes/antigos disponíveis localmente.
+4. Em CI/CD basta chamar `./gradlew build`, reduzindo fricção operacional.
 
-Com o Wrapper e a Toolchain, o build fica igual em qualquer máquina, é mais rápido começar a trabalhar e há menos erros por diferenças de ambiente.
+![Gradle Wrapper & Toolchain (Parte 1)](img/gradle_wrapper&jdk_toolchain/gradlewOutputPart1.png)
+![Gradle Wrapper & Toolchain (Parte 2)](img/gradle_wrapper&jdk_toolchain/gradlewOutputPart2.png)
+
+A combinação Wrapper + Toolchain aumenta reprodutibilidade, reduz *onboarding time* e minimiza falhas introduzidas por ambientes heterogéneos.
 
 ## Issue 30 & 31 - Initial Commit + Adding necessary dependencies
 
@@ -1082,7 +1105,7 @@ Para replicar as tasks  usadas no `build.gradle` com Ant seguiremos estes passos
 
 2. Definir propriedades e classpath
 
-     - No `build.xml` definir propriedades globais para diretórios (`src.dir`, `build.dir`, `dist.dir`, etc.) para facilitar manutenção.
+     - No `build.properties` definir propriedades globais para diretórios (`src.dir`, `build.dir`, `dist.dir`, etc.) para facilitar manutenção.
      - Definir um path `classpath` que inclua os JARs descarregados pelo Ivy.
 
 3. Configurar gestão de dependências com Ivy
@@ -1393,90 +1416,24 @@ Alterações no `build.xml` (adicionadas):
             <zip destfile="backup.zip" basedir="${backup.dir}"/>
         </target>
 
+Execução e validação (comando e excerto do output real obtido):
 
-Explicação:
+    ant zipBackup
 
-- A propriedade `backup.dir` centraliza o caminho da diretoria de cópia de segurança, facilitando manutenção e reutilização noutros alvos.
-- O alvo `backup` garante que a pasta de destino existe (`<mkdir>`) e copia recursivamente todo o conteúdo de `src/` para `${backup.dir}` com preservação da estrutura de diretórios (`<copy>` + `<fileset>`). Este passo cria uma “cópia congelada” dos fontes sobre a qual o ZIP será construído.
-- O alvo `zipBackup` declara `depends="backup"`, assegurando a ordem correta: primeiro cria-se a cópia, depois arquiva-se. Antes de gerar o novo arquivo, `<delete quiet="true">` remove um `backup.zip` antigo para evitar artefactos obsoletos e assegurar reprodutibilidade.
-- Por fim, `<zip destfile="backup.zip" basedir="${backup.dir}">` empacota todo o conteúdo da cópia (e não diretamente `src/`), espelhando a intenção de arquivar o snapshot produzido pelo alvo `backup`.
+          backup:
+                 [copy] Copying 1 file to .../CA2/Part1/gradle_basic_demo-main/backup
 
-Execução :
+          zipBackup:
+              [delete] Deleting: .../CA2/Part1/gradle_basic_demo-main/backup.zip
+                  [zip] Building zip: .../CA2/Part1/gradle_basic_demo-main/backup.zip
 
-![Execução da task zipBackup](img/zip/Ant/zipBackup.png)
-
+          BUILD SUCCESSFUL
+          Total time: 0 seconds
 
 Resultado esperado:
 
 - Pasta `backup/` contendo cópia de `src/`.
 - Artefacto `backup.zip` na raiz do projeto.
-
-## Issue 28 (Ant) - Explain Gradle Wrapper and JDK Toolchain
-
-Objetivo: explicar como reproduzimos, no Ant, a ideia do Gradle Wrapper (fixar a versão da ferramenta) e da Java Toolchain (garantir a versão de Java), para builds reprodutíveis entre máquinas.
-
-O que foi feito no `build.xml` da Parte 1:
-
-- "Toolchain" Java (versão-alvo 17)
-    - Centralizámos a versão no ficheiro `build.properties` através de `java.release=17`.
-    - O alvo `compile` usa `<javac ... release="${java.release}">`, garantindo que o bytecode é produzido para Java 17, independentemente da versão de JDK instalada (desde que o JDK em uso suporte `--release 17`).
-    - Criámos um alvo utilitário `javaToolchain` que imprime ambiente e versões (JVM, Ant, `JAVA_HOME`, `javac -version`, `java -version`) para validar a configuração ativa.
-
-    ```
-    <target name="javaToolchain" description="Prints Java and Ant environment info">
-        <echo>Java version (java.version): ${ant.java.version}</echo>
-        <echo>JAVA_HOME: ${env.JAVA_HOME}</echo>
-        <echo>javac -version:</echo>
-        <exec executable="javac" failonerror="false">
-            <arg value="-version"/>
-        </exec>
-        <echo>java -version:</echo>
-        <exec executable="java" failonerror="false">
-            <arg value="-version"/>
-        </exec>
-        <echo>Ant version: ${ant.version}</echo>
-        <echo>java.home (runtime): ${java.home}</echo>
-        <echo>user.home: ${user.home}</echo>
-    </target>
-    ```
-
-- "Wrapper" de Ant (pinar a versão do Ant e re-executar o alvo)
-    - Adicionámos propriedades para uma versão fixa de Ant (`wrapper.ant.version=1.10.15`) e URLs de download.
-    - O alvo `wrapper-prepare` faz o download do Ant para `.ant/wrapper/` e extrai o ZIP localmente.
-    - O alvo `wrapper-download-fallback` tenta um URL alternativo se o primário falhar.
-    - O alvo `wrapper` re-executa o build atual com a versão de Ant descarregada, passando um alvo a executar via `-DwrappedTarget=<alvo>`.
-    - Resultado: mesmo sem Ant instalado globalmente (ou com versões diferentes), conseguimos usar a versão definida pelo projeto.
-
-- Dependências automáticas (Ivy)
-    - No alvo `deps`, se o Ivy não existir é descarregado para `ant-lib/` e só depois é carregado.
-    - Assim não precisamos instalar nada à mão e os JARs das bibliotecas vão sempre para `libs/` da mesma forma em qualquer máquina.
-
-Como usar (exemplos rápidos):
-
-```bash
-# Ver o ambiente Java/Ant que está a ser usado
-ant -q javaToolchain
-```
-  ![Saída do ant -q javaToolchain](img/gradle_wrapper&jdk_toolchain/Ant/javatoolchain.png)
-
-- `-q` (quiet): reduz o output do Ant, mostrando apenas o essencial.
-
-```bash
-# Reexecutar o build com a versão de Ant "pinada" (wrapper)
-ant wrapper -DwrappedTarget=clean-build
-
-```
- ![Wrapper (parte 1)](img/gradle_wrapper&jdk_toolchain/Ant/antWrapper1.png)
-
-    ![Wrapper (parte 2)](img/gradle_wrapper&jdk_toolchain/Ant/antWrapper2.png)
-
- `-DwrappedTarget=clean-build`: diz ao alvo `wrapper` qual o alvo do teu projeto a executar com a versão de Ant (a que o wrapper acabou de descarregar). O `wrapper` faz dois passos: (1) descarrega/ativa o Ant; (2) volta a invocar o Ant a apontar para o mesmo `build.xml` e corre exatamente o alvo indicado (neste caso, `clean-build`). 
-
-Benefícios alcançados:
-
-- Consistência: a versão do Ant e o nível de Java alvo (17) são controlados pelo projeto.
-- Reprodutibilidade: qualquer membro da equipa obtém o mesmo resultado de build, sem passos manuais prévios.
-- Portabilidade: o Ivy é descarregado automaticamente; não é preciso pré-instalar Ivy ou manter `ant-lib/` no repositório.
 
 ## Issue 33 (Ant) - Create a custom task that depends on installDist and runs the generated distribution scripts
 
@@ -1523,60 +1480,3 @@ Código adicionado ao `build.xml`:
 4. Validação: o output observado ao executar `ant runApp` foi equivalente ao obtido com `./gradlew runApp` do ponto de vista funcional, confirmando que a aplicação inicia corretamente e está operacional.
 
 Conclusão: A implementação do alvo `runApp` em Ant fornece uma alternativa válida ao uso do Gradle para compilar e executar a aplicação. A abordagem é explícita (mais verbosa) mas reproduz o mesmo comportamento e output.
-
-## Issue 34 (Ant) - Gerar Javadoc e compactar em ZIP (`javadoc` e `zipJavadoc`)
-
-Esta secção documenta os alvos Ant responsáveis pela geração da documentação Javadoc e pela criação de um ficheiro ZIP contendo essa documentação. Os targets documentados no `build.xml` são `javadoc` e `zipJavadoc`.
-
-### Descrição da tarefa
-
-- `javadoc`: gera a documentação Javadoc a partir do código fonte Java (`app/src/main/java`) para a pasta `${build.dir}/docs/javadoc`.
-- `zipJavadoc`: depende de `javadoc` e cria um ficheiro ZIP (`${build.dir}/docs/${app.name}-javadoc-${app.version}.zip`) com o conteúdo gerado.
-
-Código adicionado ao `build.xml`:
-
-    <!-- Target to generate Javadoc documentation -->
-    <target name="javadoc" depends="compile" description="--> Generates Javadoc documentation">
-        <javadoc destdir="${javadoc.dir}"
-            author="true"
-            version="true"
-            use="true"
-            windowtitle="${app.name} Javadoc"
-            access="package"> <!-- Equivalent to JavadocMemberLevel.PACKAGE -->
-
-            <sourcepath>
-                <pathelement location="${src.dir}" />
-            </sourcepath>
-            <classpath refid="compile.classpath" />
-        </javadoc>
-    </target>
-
-    <!-- Target to create a ZIP of the Javadoc documentation -->
-    <target name="zipJavadoc" depends="javadoc"
-        description="--> Compresses the Javadoc into a ZIP file">
-        <zip destfile="${javadoc.zip.file}" basedir="${javadoc.dir}" />
-        <echo message="Javadoc ZIP created at: ${javadoc.zip.file}" />
-    </target>
-
-### O que foi feito e porquê (resolução do problema)
-
-1. O alvo `javadoc` foi adicionado para criar documentação API automaticamente a partir do código-fonte.
-
-2. O `javadoc` usa explicitamente o `sourcepath` e o `classpath` (referência `compile.classpath`) para assegurar que as classes relacionadas e dependências estão acessíveis durante a geração da documentação.
-
-3. O alvo `zipJavadoc` garante que a documentação gerada é empacotada num único artefacto ZIP colocável (`${javadoc.zip.file}`).
-
-4. Validação: ao correr `ant zipJavadoc` (ou `ant javadoc` seguido de `ant zipJavadoc`) verificou-se que:
-
-    - O directório `${build.dir}/docs/javadoc` foi criado e contém os ficheiros HTML da documentação.
-    - O ficheiro ZIP foi criado em `${build.dir}/docs/${app.name}-javadoc-${app.version}.zip` e contém a árvore de documentação.
-
-Comandos de verificação recomendados:
-
-```bash
-ant zipJavadoc
-ls -la build/docs
-unzip -l build/docs/${app.name}-javadoc-${app.version}.zip
-```
-
-Conclusão: Apesar de exigir maior configuração e verbosidade, os alvos `javadoc` e `zipJavadoc` proporcionam um fluxo simples e repetível para gerar e empacotar a documentação do projecto usando Ant.
