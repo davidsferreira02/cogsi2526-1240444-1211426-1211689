@@ -25,6 +25,12 @@
     <property name="javadoc.zip.file"
         location="${build.dir}/docs/${app.name}-javadoc-${app.version}.zip" />
 
+    <!-- Deployment directories -->
+    <property name="deploy.base.dir" location="${build.dir}/deployment" />
+    <property name="deploy.env" value="dev" />
+    <property name="deploy.dir" location="${deploy.base.dir}/${deploy.env}" />
+    <property name="deploy.lib.dir" location="${deploy.dir}/lib" />
+
     <!-- Compiler Configuration -->
     <property name="java.source.version" value="17" />
     <property name="java.target.version" value="17" />
@@ -109,5 +115,42 @@
         <zip destfile="${javadoc.zip.file}" basedir="${javadoc.dir}" />
         <echo message="Javadoc ZIP created at: ${javadoc.zip.file}" />
     </target>
+
+    <!-- Custom deployment task: deployToDev -->
+    <target name="deployToDev" depends="jar" description="--> Deploy the application to the dev deployment folder">
+        <!-- 1) Clean deployment directory -->
+        <delete dir="${deploy.dir}" />
+        <mkdir dir="${deploy.dir}" />
+        <mkdir dir="${deploy.lib.dir}" />
+
+        <!-- 2) Copy main application artifact (JAR) -->
+        <copy file="${jar.file}" todir="${deploy.dir}" />
+
+        <!-- 3) Copy runtime dependencies (only JARs) into deployment lib folder -->
+        <copy todir="${deploy.lib.dir}">
+            <fileset dir="${lib.dir}/jars" includes="**/*.jar" erroronmissingdir="false" />
+        </copy>
+
+        <!-- Prepare a build timestamp property for token replacement -->
+        <tstamp>
+            <format property="build.timestamp" pattern="yyyy-MM-dd'T'HH:mm:ssZ" />
+        </tstamp>
+
+        <!-- 4) Copy configuration files with token replacement -->
+        <copy todir="${deploy.dir}">
+            <fileset dir="${resources.dir}" includes="**/*.properties" erroronmissingdir="false" />
+            <filterchain>
+                <replacetokens>
+                    <token key="BUILD_VERSION" value="${app.version}" />
+                    <token key="BUILD_TIMESTAMP" value="${build.timestamp}" />
+                </replacetokens>
+            </filterchain>
+        </copy>
+
+        <echo message="Deployment completed: ${deploy.dir}" />
+    </target>
+
+    <!-- Convenience alias to run the app with `ant run` -->
+    <target name="run" depends="runApp" description="--> Alias for runApp" />
 
 </project>

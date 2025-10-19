@@ -6,3 +6,8 @@ build
 
 # Ignore library dependencies directory
 lib/
+libs/
+
+ant-build/
+any-lib/
+.ant/
