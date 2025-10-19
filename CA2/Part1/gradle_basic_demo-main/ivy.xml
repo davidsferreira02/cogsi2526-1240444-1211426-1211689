@@ -1,13 +1,19 @@
 <ivy-module version="2.0">
   <info organisation="me" module="gradle_basic_demo"/>
+
+  <!-- Define the configurations we will use -->
   <configurations>
     <conf name="compile" visibility="public"/>
     <conf name="runtime" extends="compile" visibility="public"/>
+    <conf name="test"    extends="runtime" visibility="public"/>
   </configurations>
 
   <dependencies>
-    <!-- Use the SAME version for api and core -->
+    <!-- App deps -->
     <dependency org="org.apache.logging.log4j" name="log4j-api"  rev="2.24.1" conf="compile->default"/>
     <dependency org="org.apache.logging.log4j" name="log4j-core" rev="2.24.1" conf="runtime->default"/>
+    <dependency org="org.junit.jupiter" name="junit-jupiter-api"    rev="5.10.0" conf="test->default"/>
+    <dependency org="org.junit.jupiter" name="junit-jupiter-engine" rev="5.10.0" conf="test->default"/>
+    <dependency org="org.junit.platform" name="junit-platform-launcher" rev="1.10.0" conf="test->default"/>
   </dependencies>
 </ivy-module>

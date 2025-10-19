@@ -1143,7 +1143,240 @@ Comandos de exemplo:
     ant clean-build
     ant run
 
-### Issue 27 (Ant) — Add zipBackup task of type Zip
+## Issue 24 (Ant) - Adicionar tarefa para correr *Server*
+
+Para ser possível executar o *server* da aplicação foi adicionado ao ficheiro de propriedades a classe *main* do servidor, presente na classe *java* *ChatServerApp*. 
+
+    server.main=basic_demo.ChatServerApp
+
+De seguida, foi criado um *JAR* para o servidor, a criação deste depende da tarefa de compilação.
+
+    <target name="jar-server" depends="compile"><make-runnable-jar name="server" mainclass="${server.main}"/></target>
+
+Por fim, é criada uma tarefa para correr a parte do servidor do projeto:
+
+    <target name="run-server" depends="jar-server">
+        <java jar="${dist.dir}/server.jar" fork="true" failonerror="true">
+            <arg value="${server.port}"/>
+        </java>
+    </target>
+
+De notar que é necessário passar o número do porto como paramêtro. Posto isto, resta validar se o mesmo executa como esperado.
+
+    nacunha@cogsi:/mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main$ ant run-server
+    Buildfile: /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main/build.xml
+
+    deps:
+    [ivy:resolve] :: Apache Ivy 2.5.2 - 20230817170011 :: https://ant.apache.org/ivy/ ::
+    [ivy:resolve] :: loading settings :: url = jar:file:/usr/share/ant/lib/ivy.jar!/org/apache/ivy/core/settings/ivysettings.xml
+    [ivy:resolve] :: resolving dependencies :: me#gradle_basic_demo;working@cogsi
+    [ivy:resolve]   confs: [compile, runtime]
+    [ivy:resolve]   found org.apache.logging.log4j#log4j-api;2.24.1 in public
+    [ivy:resolve]   found org.apache.logging.log4j#log4j-core;2.24.1 in public
+    [ivy:resolve] :: resolution report :: resolve 113ms :: artifacts dl 3ms
+            ---------------------------------------------------------------------
+            |                  |            modules            ||   artifacts   |
+            |       conf       | number| search|dwnlded|evicted|| number|dwnlded|
+            ---------------------------------------------------------------------
+            |      compile     |   1   |   0   |   0   |   0   ||   1   |   0   |
+            |      runtime     |   2   |   0   |   0   |   0   ||   2   |   0   |
+            ---------------------------------------------------------------------
+    [ivy:retrieve] :: retrieving :: me#gradle_basic_demo [sync]
+    [ivy:retrieve]  confs: [compile, runtime]
+    [ivy:retrieve]  0 artifacts copied, 2 already retrieved (0kB/17ms)
+
+    prepare:
+        [mkdir] Created dir: /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main/ant-build/classes
+        [mkdir] Created dir: /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main/ant-build/jar
+        [mkdir] Created dir: /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main/ant-build/dist
+
+    resources:
+         [copy] Copying 1 file to /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main/ant-build/classes
+
+    compile:
+        [javac] Compiling 5 source files to /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main/ant-build/classes
+        [javac] Note: Annotation processing is enabled because one or more processors were found
+        [javac]   on the class path. A future release of javac may disable annotation processing
+        [javac]   unless at least one processor is specified by name (-processor), or a search
+        [javac]   path is specified (--processor-path, --processor-module-path), or annotation
+        [javac]   processing is enabled explicitly (-proc:only, -proc:full).
+        [javac]   Use -Xlint:-options to suppress this message.
+        [javac]   Use -proc:none to disable annotation processing.
+
+    jar-server:
+          [jar] Building jar: /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main/ant-build/jar/server.jar
+         [copy] Copying 1 file to /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main/ant-build/dist
+         [copy] Copying 2 files to /mnt/hgfs/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main/ant-build/dist/libs
+
+    run-server:
+         [java] The chat server is running...
+
+Como podemos observar pelo *output*, mostrado acima, o servidor é executado como esperado.
+
+### Issue 25 (Ant) — Permitir execução de testes
+
+Para ser possível a execução dos testes foi necessário adicionar algumas variáveis ao ficheiro de propriedades:
+
+    # ===== Tests =====
+    test.src.dir=src/test/java
+    test.resources.dir=src/test/resources
+    test.classes.dir=${build.dir}/test-classes
+    test.reports.dir=${build.dir}/test-reports
+    test.includes=**/*Test.class
+    test.excludes=
+
+O contéudo adicionado serve para definir os caminhos para a pasta onde estão colocados os testas, a pasta para os recursos e para onde serão colocados os ficheiros com os testes já compilados. Para além disso, é definido o local onde são os *reports* dos testes, bem como duas expressões regulares que permitem definir os testes a correr e os testes a serem ignorados.
+
+De seguida, foram adicionadas as dependências necessárias ao ficheiro ***ivy.xml***:
+
+    <dependencies>
+        <dependency org="org.apache.logging.log4j" name="log4j-api"  rev="2.24.1" conf="compile->default"/>
+        <dependency org="org.apache.logging.log4j" name="log4j-core" rev="2.24.1" conf="runtime->default"/>
+        <dependency org="org.junit.jupiter" name="junit-jupiter-api"    rev="5.10.0" conf="test->default"/>
+        <dependency org="org.junit.jupiter" name="junit-jupiter-engine" rev="5.10.0" conf="test->default"/>
+        <dependency org="org.junit.platform" name="junit-platform-launcher" rev="1.10.0" conf="test->default"/>
+    </dependencies>
+
+
+Definidas as variáveis e as dependências adicionadas, é necessário editar o ficheiro ***build.xml***. Neste foi adicionado o seguinte:
+
+    <path id="test.compile.classpath">
+        <pathelement location="${classes.dir}"/>
+        <fileset dir="${lib.dir}" includes="**/*.jar" erroronmissingdir="false"/>
+    </path>
+
+    <path id="test.runtime.classpath">
+        <pathelement location="${test.classes.dir}"/>
+        <pathelement location="${classes.dir}"/>
+        <fileset dir="${lib.dir}" includes="**/*.jar" erroronmissingdir="false"/>
+    </path>
+
+O primeiro bloco define e atribui um identificador ao classpath utilizado pelo ***Ant*** durante a compilação dos ficheiros de teste, garantindo que o compilador tenha acesso tanto às classes principais já compiladas como a todas as bibliotecas externas localizadas na pasta *libs/*.
+
+O segundo bloco define o *classpath* utilizado pelo ***Ant*** durante a execução dos testes, incluindo no caminho as classes de teste compiladas, as classes principais do projeto e todas as dependências externas necessárias para que o ambiente de testes seja corretamente configurado em tempo de execução.
+
+De seguida, foram criadas duas tarefas em Ant, designadas por *targets*, a primeira tem como objetivo preparar o ambiente de compilação dos testes, criando todas as pastas necessárias com base nas variáveis previamente definidas.
+A segunda é responsável por compilar os ficheiros de teste, dependendo da execução bem-sucedida da primeira, de forma a garantir que a estrutura de diretórios necessária já se encontre criada antes da compilação.
+
+    <target name="test-prepare" depends="compile">
+        <mkdir dir="${test.classes.dir}"/>
+        <mkdir dir="${test.reports.dir}"/>
+        <copy todir="${test.classes.dir}">
+            <fileset dir="${test.resources.dir}" erroronmissingdir="false"/>
+        </copy>
+    </target>       
+    
+    <target name="test-compile" depends="test-prepare" description="Compile test sources">
+        <javac srcdir="${test.src.dir}" destdir="${test.classes.dir}" includeantruntime="false"
+               release="${java.release}" encoding="${encoding}">
+            <classpath refid="test.compile.classpath"/>
+            <compilerarg value="-Xlint:deprecation"/>
+            <compilerarg value="-Xlint:unchecked"/>
+        </javac>
+    </target>
+
+Por fim, foi criada a *target* para a execução dos testes:
+
+    <target name="test" depends="test-compile" description="Run unit tests (JUnit 5)">
+        <junitlauncher haltonfailure="true">
+            <classpath refid="test.runtime.classpath"/>
+            <listener type="legacy-xml" sendSysOut="true" sendSysErr="true"/>
+            <testclasses outputdir="${test.reports.dir}">
+                <fileset dir="${test.classes.dir}">
+                    <include name="${test.includes}"/>
+                    <exclude name="${test.excludes}"/>
+                </fileset>
+            </testclasses>
+        </junitlauncher>
+    </target>
+
+Analisando-a é de extrema importância sublinhar alguns detalhes:
+
+1. Utilização do elemento ***<junitlauncher>***, responsável por executar os testes unitários utilizando o ***JUnit 5***.
+2. Implementação do ***<listener>***, utilizado para gerar relatórios em formato XML, contendo informações detalhadas sobre a execução dos testes.
+
+De notar, que, que tal como referido na solução em *Gradle* do mesmo *issue*, para a execução dos testes é necessário uma máquina com ambiente gráfico e por isso, excecionalmente, a validação do mesmo foi feita numa máquina *Windows*:
+
+    C:\Shared\cogsi2526-1240444-1211426-1211689\CA2\Part1\gradle_basic_demo-main>ant test
+    Buildfile: C:\Shared\cogsi2526-1240444-1211426-1211689\CA2\Part1\gradle_basic_demo-main\build.xml
+
+    deps:
+    [ivy:resolve] :: Apache Ivy 2.5.2 - 20230817170011 :: https://ant.apache.org/ivy/ ::
+    [ivy:resolve] :: loading settings :: url = jar:file:/C:/Shared/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main/ant-lib/ivy-2.5.2.jar!/org/apache/ivy/core/settings/ivysettings.xml
+    [ivy:resolve] :: resolving dependencies :: me#gradle_basic_demo;working@NunoCunha
+    [ivy:resolve]   confs: [compile, runtime, test]
+    [ivy:resolve]   found org.apache.logging.log4j#log4j-api;2.24.1 in public
+    [ivy:resolve]   found org.apache.logging.log4j#log4j-core;2.24.1 in public
+    [ivy:resolve]   found org.junit.jupiter#junit-jupiter-api;5.10.0 in public
+    [ivy:resolve]   found org.opentest4j#opentest4j;1.3.0 in public
+    [ivy:resolve]   found org.junit.platform#junit-platform-commons;1.10.0 in public
+    [ivy:resolve]   found org.apiguardian#apiguardian-api;1.1.2 in public
+    [ivy:resolve]   found org.junit.jupiter#junit-jupiter-engine;5.10.0 in public
+    [ivy:resolve]   found org.junit.platform#junit-platform-engine;1.10.0 in public
+    [ivy:resolve]   found org.junit.platform#junit-platform-launcher;1.10.0 in public
+    [ivy:resolve] :: resolution report :: resolve 268ms :: artifacts dl 11ms
+            ---------------------------------------------------------------------
+            |                  |            modules            ||   artifacts   |
+            |       conf       | number| search|dwnlded|evicted|| number|dwnlded|
+            ---------------------------------------------------------------------
+            |      compile     |   1   |   0   |   0   |   0   ||   1   |   0   |
+            |      runtime     |   2   |   0   |   0   |   0   ||   2   |   0   |
+            |       test       |   9   |   0   |   0   |   0   ||   9   |   0   |
+            ---------------------------------------------------------------------
+    [ivy:retrieve] :: retrieving :: me#gradle_basic_demo [sync]
+    [ivy:retrieve]  confs: [compile, runtime, test]
+    [ivy:retrieve]  0 artifacts copied, 9 already retrieved (0kB/10ms)
+
+    prepare:
+        [mkdir] Created dir: C:\Shared\cogsi2526-1240444-1211426-1211689\CA2\Part1\gradle_basic_demo-main\ant-build\classes
+        [mkdir] Created dir: C:\Shared\cogsi2526-1240444-1211426-1211689\CA2\Part1\gradle_basic_demo-main\ant-build\jar
+        [mkdir] Created dir: C:\Shared\cogsi2526-1240444-1211426-1211689\CA2\Part1\gradle_basic_demo-main\ant-build\dist
+
+    resources:
+         [copy] Copying 1 file to C:\Shared\cogsi2526-1240444-1211426-1211689\CA2\Part1\gradle_basic_demo-main\ant-build\classes
+
+    compile:
+        [javac] Compiling 5 source files to C:\Shared\cogsi2526-1240444-1211426-1211689\CA2\Part1\gradle_basic_demo-main\ant-build\classes
+        [javac] Note: Annotation processing is enabled because one or more processors were found
+        [javac]   on the class path. A future release of javac may disable annotation processing
+        [javac]   unless at least one processor is specified by name (-processor), or a search
+        [javac]   path is specified (--processor-path, --processor-module-path), or annotation
+        [javac]   processing is enabled explicitly (-proc:only, -proc:full).
+        [javac]   Use -Xlint:-options to suppress this message.
+        [javac]   Use -proc:none to disable annotation processing.
+
+    test-prepare:
+        [mkdir] Created dir: C:\Shared\cogsi2526-1240444-1211426-1211689\CA2\Part1\gradle_basic_demo-main\ant-build\test-classes
+        [mkdir] Created dir: C:\Shared\cogsi2526-1240444-1211426-1211689\CA2\Part1\gradle_basic_demo-main\ant-build\test-reports
+
+    test-compile:
+        [javac] Compiling 1 source file to C:\Shared\cogsi2526-1240444-1211426-1211689\CA2\Part1\gradle_basic_demo-main\ant-build\test-classes
+        [javac] Note: Annotation processing is enabled because one or more processors were found
+        [javac]   on the class path. A future release of javac may disable annotation processing
+        [javac]   unless at least one processor is specified by name (-processor), or a search
+        [javac]   path is specified (--processor-path, --processor-module-path), or annotation
+        [javac]   processing is enabled explicitly (-proc:only, -proc:full).
+        [javac]   Use -Xlint:-options to suppress this message.
+        [javac]   Use -proc:none to disable annotation processing.
+
+    test:
+    [junitlauncher] Running basic_demo.ChatClientTest
+
+    BUILD SUCCESSFUL
+    Total time: 1 second
+
+Como podemos ver, o *build* dos testes é bem sucedido, faltando apenas validar os resultados no *report* criado:
+
+    <testsuite name="basic_demo.ChatClientTest" time="0.252" timestamp="2025-10-19T14:39:28" tests="1" failures="0" skipped="0" aborted="0">
+        <properties>
+        (*Output* abreviado)
+        </properties>
+        <testcase classname="basic_demo.ChatClientTest" name="testChatClientCreation()" time="0.191"/>
+    </testsuite>
+
+Como é possível ver tanto o *build* como o resultado dos testes é o esperado.
+
+### Issue 27 (Ant) — Adicionar alvo zipBackup (depende de backup)
 
 Objetivo: criar um ficheiro `backup.zip` a partir da pasta `backup/`, garantindo antes a cópia de `src/` para `backup/`.
 
@@ -1354,3 +1587,60 @@ Código adicionado ao `build.xml`:
 4. Validação: o output observado ao executar `ant runApp` foi equivalente ao obtido com `./gradlew runApp` do ponto de vista funcional, confirmando que a aplicação inicia corretamente e está operacional.
 
 Conclusão: A implementação do alvo `runApp` em Ant fornece uma alternativa válida ao uso do Gradle para compilar e executar a aplicação. A abordagem é explícita (mais verbosa) mas reproduz o mesmo comportamento e output.
+
+## Issue 34 (Ant) - Gerar Javadoc e compactar em ZIP (`javadoc` e `zipJavadoc`)
+
+Esta secção documenta os alvos Ant responsáveis pela geração da documentação Javadoc e pela criação de um ficheiro ZIP contendo essa documentação. Os targets documentados no `build.xml` são `javadoc` e `zipJavadoc`.
+
+### Descrição da tarefa
+
+- `javadoc`: gera a documentação Javadoc a partir do código fonte Java (`app/src/main/java`) para a pasta `${build.dir}/docs/javadoc`.
+- `zipJavadoc`: depende de `javadoc` e cria um ficheiro ZIP (`${build.dir}/docs/${app.name}-javadoc-${app.version}.zip`) com o conteúdo gerado.
+
+Código adicionado ao `build.xml`:
+
+    <!-- Target to generate Javadoc documentation -->
+    <target name="javadoc" depends="compile" description="--> Generates Javadoc documentation">
+        <javadoc destdir="${javadoc.dir}"
+            author="true"
+            version="true"
+            use="true"
+            windowtitle="${app.name} Javadoc"
+            access="package"> <!-- Equivalent to JavadocMemberLevel.PACKAGE -->
+
+            <sourcepath>
+                <pathelement location="${src.dir}" />
+            </sourcepath>
+            <classpath refid="compile.classpath" />
+        </javadoc>
+    </target>
+
+    <!-- Target to create a ZIP of the Javadoc documentation -->
+    <target name="zipJavadoc" depends="javadoc"
+        description="--> Compresses the Javadoc into a ZIP file">
+        <zip destfile="${javadoc.zip.file}" basedir="${javadoc.dir}" />
+        <echo message="Javadoc ZIP created at: ${javadoc.zip.file}" />
+    </target>
+
+### O que foi feito e porquê (resolução do problema)
+
+1. O alvo `javadoc` foi adicionado para criar documentação API automaticamente a partir do código-fonte.
+
+2. O `javadoc` usa explicitamente o `sourcepath` e o `classpath` (referência `compile.classpath`) para assegurar que as classes relacionadas e dependências estão acessíveis durante a geração da documentação.
+
+3. O alvo `zipJavadoc` garante que a documentação gerada é empacotada num único artefacto ZIP colocável (`${javadoc.zip.file}`).
+
+4. Validação: ao correr `ant zipJavadoc` (ou `ant javadoc` seguido de `ant zipJavadoc`) verificou-se que:
+
+    - O directório `${build.dir}/docs/javadoc` foi criado e contém os ficheiros HTML da documentação.
+    - O ficheiro ZIP foi criado em `${build.dir}/docs/${app.name}-javadoc-${app.version}.zip` e contém a árvore de documentação.
+
+Comandos de verificação recomendados:
+
+```bash
+ant zipJavadoc
+ls -la build/docs
+unzip -l build/docs/${app.name}-javadoc-${app.version}.zip
+```
+
+Conclusão: Apesar de exigir maior configuração e verbosidade, os alvos `javadoc` e `zipJavadoc` proporcionam um fluxo simples e repetível para gerar e empacotar a documentação do projecto usando Ant.
