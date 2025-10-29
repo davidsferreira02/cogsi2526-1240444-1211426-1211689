@@ -1786,3 +1786,93 @@ Verificando a compilação e ordenação dos testes resta apenas validar o seu r
     <testsuite name="payroll.EmployeeRepositoryIT" time="6.456" timestamp="2025-10-19T17:56:10" tests="1" failures="0" skipped="0" aborted="0">
 
 Como podemos, ver os testes obtiveram um resultado positivo, garantindo assim o objetivo do *issue*, apesar de em *Ant* não existir algo equivalente a *Source Sets*.
+
+# Technical Report CA03
+
+## Issue 37 - Create Vagrant VM and automate dependency installation using provisioning script
+
+Para a implementação do *Vagrant* é necessário instalar o mesmo na máquina onde estará presente o *Hypervisor* que vai hospedar as VM's criadas. É de notar a importâncias dos seguintes factos:
+
+1. O *Hypervisor* escolhido foi o *VMware*, dado que um elemento do grupo utiliza um *Macbook* cujo processador não é *Intel*.
+2. A documentação criada para a solução do *Issue 37* foi feita com recurso ao *WSL*, dado que até ao momento foi utilizada uma máquina *Ubuntu Server* que não têm ambiente gráfico. Posto isto, apenas os comandos relacionados com *Vagrant* serão corridos via *PowerShell* dado que não existem diferenças entre *Windows* e *Ubuntu*.
+
+Dado que irá ser utilizado o *VMware* foi também instalado o *plugin* do *VMware* através do comando ***vagrant plugin install vagrant-vmware-desktop***, bem como, o pacote com as ferramentas extra necessárias para o funcionamento do mesmo. Tendo o *vagrant* já instalado, foi criada uma pasta para a parte 1 do CA3 e na mesma executado o comando ***vagrant init***, criando assim um ***vagrantfile*** onde serão feitas as configurações. No código, mostrado a seguir, foram colocados as alterações feitas ao ficheiro *vagrant*:
+
+    Vagrant.configure("2") do |config|
+      config.vm.box = "bento/ubuntu-22.04"
+      config.vm.synced_folder ".", "/vagrant"
+      config.vm.provision "shell", run: "always" do |s|
+        s.inline = <<-SHELL
+          sudo apt-get update
+          sudo apt-get install -y git default-jdk maven gradle
+          java -version
+          javac -version
+          mvn -v
+          gradle -v
+        SHELL
+      end
+    end
+
+Podemos afirmar o seguinte:
+
+1. O *provision* é sempre feito quando o comando ***vagrant up*** for executado.
+1. A VM utiliza a *box* "*bento/ubuntu-22.04*".
+2. A pasta partilhada de ambos, no host, será colocada no diretório onde o comando ***vagrant up*** for corrido.
+3. Todos os programas são implementados e posteriormente é revelado a versão dos mesmos para validar a sua instalação.
+
+Posto isto, em jeito de validação, observou-se o output gerado pela criação da máquina, para validar se as ferramentas foram instaladas e utilizou-se o comando ***vagrant ssh*** para estabelecer uma ligação SSH à máquina para perceber se a mesma estava operacional.
+
+Verificação da instalação dos programas:
+
+    default: openjdk version "11.0.28" 2025-07-15
+    default: OpenJDK Runtime Environment (build 11.0.28+6-post-Ubuntu-1ubuntu122.04.1)
+    default: OpenJDK 64-Bit Server VM (build 11.0.28+6-post-Ubuntu-1ubuntu122.04.1, mixed mode, sharing)
+    default: javac 11.0.28
+    default: Apache Maven 3.6.3
+    default: Maven home: /usr/share/maven
+    default: Java version: 11.0.28, vendor: Ubuntu, runtime: /usr/lib/jvm/java-11-openjdk-amd64
+    default: Default locale: en_US, platform encoding: UTF-8
+    default: OS name: "linux", version: "5.15.0-160-generic", arch: "amd64", family: "unix"
+    default: WARNING: An illegal reflective access operation has occurred
+    default: WARNING: Illegal reflective access by org.codehaus.groovy.reflection.CachedClass (file:/usr/share/java/groovy-all.jar) to method java.lang.Object.finalize()
+    default: WARNING: Please consider reporting this to the maintainers of org.codehaus.groovy.reflection.CachedClass
+    default: WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+    default: WARNING: All illegal access operations will be denied in a future release
+    default:
+    default: ------------------------------------------------------------
+    default: Gradle 4.4.1
+    default: ------------------------------------------------------------
+    default:
+    default: Build time:   2012-12-21 00:00:00 UTC
+    default: Revision:     none
+    default:
+    default: Groovy:       2.4.21
+    default: Ant:          Apache Ant(TM) version 1.10.12 compiled on January 17 1970
+    default: JVM:          11.0.28 (Ubuntu 11.0.28+6-post-Ubuntu-1ubuntu122.04.1)
+    default: OS:           Linux 5.15.0-160-generic amd64
+    default:
+
+Validação do acesso à máquina:
+
+    PS C:\Shared\cogsi2526-1240444-1211426-1211689\CA3\Part1> vagrant ssh
+    Welcome to Ubuntu 22.04.5 LTS (GNU/Linux 5.15.0-160-generic x86_64)
+
+     * Documentation:  https://help.ubuntu.com
+     * Management:     https://landscape.canonical.com
+     * Support:        https://ubuntu.com/pro
+
+     System information as of Wed Oct 29 02:02:02 AM UTC 2025
+
+      System load:  0.19               Processes:             209
+      Usage of /:   19.5% of 30.34GB   Users logged in:       0
+      Memory usage: 10%                IPv4 address for eth0: 192.168.244.133
+      Swap usage:   0%
+
+
+    This system is built by the Bento project by Chef Software
+    More information can be found at https://github.com/chef/bento
+
+    Use of this system is acceptance of the OS vendor EULA and License Agreements.
+    Last login: Wed Oct 29 01:52:53 2025 from 192.168.244.2
+    vagrant@vagrant:~$
+
