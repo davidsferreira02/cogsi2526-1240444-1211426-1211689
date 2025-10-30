@@ -1801,24 +1801,24 @@ Dado que irá ser utilizado o *VMware* foi também instalado o *plugin* do *VMwa
     Vagrant.configure("2") do |config|
       config.vm.box = "bento/ubuntu-22.04"
       config.vm.synced_folder ".", "/vagrant"
-      config.vm.provision "shell", run: "always" do |s|
-        s.inline = <<-SHELL
-          sudo apt-get update
-          sudo apt-get install -y git default-jdk maven gradle
-          java -version
-          javac -version
-          mvn -v
-          gradle -v
-        SHELL
-      end
+      config.vm.provision "shell", path: "provision.sh"
     end
-
+    
 Podemos afirmar o seguinte:
 
-1. O *provision* é sempre feito quando o comando ***vagrant up*** for executado.
 1. A VM utiliza a *box* "*bento/ubuntu-22.04*".
 2. A pasta partilhada de ambos, no host, será colocada no diretório onde o comando ***vagrant up*** for corrido.
-3. Todos os programas são implementados e posteriormente é revelado a versão dos mesmos para validar a sua instalação.
+3. O *provision* da máquina é feito através de um *script* com o mesmo nome colocado no diretório do ***vagrantfile***. Sendo assim, este fica mais limpo e legível e podemos editar o *script* conforme for necess+ario.
+
+    #!/bin/bash
+    
+    #Install necessary packages and after show the version for validation
+    sudo apt-get update -y
+    sudo apt-get install -y git default-jdk maven gradle
+    java -version
+    javac -version
+    mvn -v
+    gradle -v
 
 Posto isto, em jeito de validação, observou-se o output gerado pela criação da máquina, para validar se as ferramentas foram instaladas e utilizou-se o comando ***vagrant ssh*** para estabelecer uma ligação SSH à máquina para perceber se a mesma estava operacional.
 
@@ -1876,3 +1876,64 @@ Validação do acesso à máquina:
     Last login: Wed Oct 29 01:52:53 2025 from 192.168.244.2
     vagrant@vagrant:~$
 
+## Issue 38 - Clone Repository and Build Projects
+
+Para se concretizar o objetivo deste *issue* começou-se por tratar da parte da clonagem do repositório. Para isso, foi necessário realizar um *workaround*, pois o ambiente onde foi criada a máquina virtual foi corrida é um ambiente *Windows* e por isso as clonagens de repositórios via SSH náo funcionam de forma totalmente correta. Posto isto, o repositório foi colocado público por breves momentos e o repositório foi clonado via HTTPS para a máquina criada através do ***Vagrant***. Exposta esta situação passa-se a explicar as alterações feitas ao ficheiro ***provision.sh*** para a clonagem do repositório:
+
+    cd /vagrant
+    if [ ! -d "cogsi2526-1240444-1211426-1211689" ]; then
+      git clone https://github.com/davidsferreira02/cogsi2526-1240444-1211426-1211689.git cogsi2526-1240444-1211426-1211689
+    else
+      cd cogsi2526-1240444-1211426-1211689
+      git pull
+    fi
+
+O *if statement* que foi adicionado ao ficheiro tem como objetivo, dentro do diretório *vagrant*, que é a pasta partilhada com o *host*, verificar se já existe um repositório com o nome do nosso. Caso não exista este vai fazer *clone* do projeto a primeira vez, caso já exista um projeto o *script* irá executar um *git pull* para obter a versáo mais atualizada do repositório.
+
+Para validarmos este método, podemos observar o resultado do comando ***vagrant up***, especialmente a parte final, logo a seguir ao *print* das versões dos pacotes instalados.
+
+        default: openjdk version "11.0.28" 2025-07-15
+        default: OpenJDK Runtime Environment (build 11.0.28+6-post-Ubuntu-1ubuntu122.04.1)
+        default: OpenJDK 64-Bit Server VM (build 11.0.28+6-post-Ubuntu-1ubuntu122.04.1, mixed mode, sharing)
+        default: javac 11.0.28
+        default: Apache Maven 3.6.3
+        default: Maven home: /usr/share/maven
+        default: Java version: 11.0.28, vendor: Ubuntu, runtime: /usr/lib/jvm/java-11-openjdk-amd64
+        default: Default locale: en_US, platform encoding: UTF-8
+        default: OS name: "linux", version: "5.15.0-160-generic", arch: "amd64", family: "unix"
+        default: WARNING: An illegal reflective access operation has occurred
+        default: WARNING: Illegal reflective access by org.codehaus.groovy.reflection.CachedClass (file:/usr/share/java/groovy-all.jar) to method java.lang.Object.finalize()
+        default: WARNING: Please consider reporting this to the maintainers of org.codehaus.groovy.reflection.CachedClass
+        default: WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+        default: WARNING: All illegal access operations will be denied in a future release
+        default:
+        default: ------------------------------------------------------------
+        default: Gradle 4.4.1
+        default: ------------------------------------------------------------
+        default:
+        default: Build time:   2012-12-21 00:00:00 UTC
+        default: Revision:     none
+        default:
+        default: Groovy:       2.4.21
+        default: Ant:          Apache Ant(TM) version 1.10.12 compiled on January 17 1970
+        default: JVM:          11.0.28 (Ubuntu 11.0.28+6-post-Ubuntu-1ubuntu122.04.1)
+        default: OS:           Linux 5.15.0-160-generic amd64
+        default:
+        default: Cloning into 'cogsi2526-1240444-1211426-1211689'...
+    Updating files: 100% (387/387), done.7/387)
+
+**NOTA**: *output* abreviado de forma a focar o output pretendido.
+
+Como podemos ver existe a clonagem do repositório, algo que também pode ser confirmado no interior da máquina virtual, usando o comando ***vagrant ssh*** e navengando na árvore de diretórios e verificarmos a pasta partilhada e validar se a pasta do projeto está presente na mesma, como mostra o seguinte *output*:
+
+    vagrant@vagrant:~$ cd ..
+    vagrant@vagrant:/home$ cd ..
+    vagrant@vagrant:/$ ls
+    bin   cdrom  etc   lib    lib64   lost+found  mnt  proc  run   snap  swap.img  tmp  vagrant
+    boot  dev    home  lib32  libx32  media       opt  root  sbin  srv   sys       usr  var
+    vagrant@vagrant:/$
+    vagrant@vagrant:/$
+    vagrant@vagrant:/$ cd vagrant/
+    vagrant@vagrant:/vagrant$ ls
+    cogsi2526-1240444-1211426-1211689  provision.sh  Vagrantfile
+    vagrant@vagrant:/vagrant$ 
