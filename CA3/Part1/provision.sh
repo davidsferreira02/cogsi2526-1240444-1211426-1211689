@@ -17,6 +17,7 @@ else
 fi
 
 cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main
+git switch VagrantRepoInstall
 
 ./gradlew runServer &
 PID=$!
@@ -27,3 +28,6 @@ wait $PID
 # Then wait another 10 seconds and kill it (if still running)
 sleep 10
 kill -SIGINT $PID 2>/dev/null || echo "Process already exited."
+
+
+https://github.com/davidsferreira02/cogsi2526-1240444-1211426-1211689.git
