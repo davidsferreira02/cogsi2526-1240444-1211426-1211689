@@ -2,7 +2,7 @@
 
 # Install necessary packages and show versions for validation
 sudo apt-get update -y
-sudo apt-get install -y git default-jdk maven gradle
+sudo apt-get install -y git openjdk-17-jdk maven gradle
 java -version
 javac -version
 mvn -v
