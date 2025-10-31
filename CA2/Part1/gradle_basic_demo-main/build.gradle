@@ -30,7 +30,7 @@ dependencies {
 }
 
 test {
-    ignoreFailures = true
+    systemProperty "java.awt.headless", "true"
     useJUnitPlatform()
 }
  
