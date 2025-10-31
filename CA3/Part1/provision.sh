@@ -22,9 +22,6 @@ git switch VagrantRepoInstall
 ./gradlew runServer &
 PID=$!
 
-# Wait until the build is done (process exits)
-wait $PID
-
-# Then wait another 10 seconds and kill it (if still running)
 sleep 10
-kill -SIGINT $PID 2>/dev/null || echo "Process already exited."
+kill -SIGINT $PID
+wait $PID 2>/dev/null
