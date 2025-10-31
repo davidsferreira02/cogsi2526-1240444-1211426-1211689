@@ -16,6 +16,9 @@ else
   git pull
 fi
 
+sudo mkdir -p /vagrant/data/h2
+sudo chown -R vagrant:vagrant /vagrant/data/h2
+
 sudo apt install -y xvfb
 git switch VagrantRepoInstall
 
