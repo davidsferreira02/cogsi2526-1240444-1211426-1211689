@@ -1988,3 +1988,50 @@ A primeira linha é para instalar a ferramenta ***xvfb***, esta foi feita especi
 
 Para validarmos o resultado, fez-se o *commit* destas alterações e executou-se o comando ***vagrant up --provision***, este executa apenas o *script* construído de forma. Sendo o resultado o seguinte *output*:
 
+    default: xvfb is already the newest version (2:21.1.4-2ubuntu1.7~22.04.16).
+    default: 0 upgraded, 0 newly installed, 0 to remove and 13 not upgraded.
+    default: Switched to a new branch 'VagrantRepoInstall'
+    default: Branch 'VagrantRepoInstall' set up to track remote branch 'VagrantRepoInstall' from 'origin'.
+    default: > Task :compileJava UP-TO-DATE
+    default: > Task :processResources UP-TO-DATE
+    default: > Task :classes UP-TO-DATE
+    default: > Task :jar UP-TO-DATE
+    default: > Task :startScripts UP-TO-DATE
+    default: > Task :distTar UP-TO-DATE
+    default: > Task :distZip UP-TO-DATE
+    default: > Task :assemble UP-TO-DATE
+    default: > Task :compileTestJava
+    default: > Task :processTestResources NO-SOURCE
+    default: > Task :testClasses
+    default: > Task :test
+    default: > Task :check
+    default: > Task :build
+    default:
+    default: Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+    default:
+    default: You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+    default:
+    default: For more on this, please refer to https://docs.gradle.org/8.9/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+    default:
+    default: BUILD SUCCESSFUL in 2s
+    default: 8 actionable tasks: 2 executed, 6 up-to-date
+    default: Calculating task graph as configuration cache cannot be reused because the file system entry 'app/build/classes/java/main' has been created.
+    default: > Task :app:processResources NO-SOURCE
+    default: > Task :app:compileJava UP-TO-DATE
+    default: > Task :app:classes UP-TO-DATE
+    default: > Task :app:resolveMainClassName UP-TO-DATE
+    default: > Task :app:bootJar UP-TO-DATE
+    default:
+    default: [Incubating] Problems report is available at: file:///vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part2/build/reports/problems/problems-report.html
+    default:
+    default: Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+    default:
+    default: You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+    default:
+    default: For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+    default:
+    default: BUILD SUCCESSFUL in 1s
+    default: 3 actionable tasks: 3 up-to-date
+    default: Configuration cache entry stored.
+
+Como podemos observar, ambos os projetos concluem com sucesso o *build*.
