@@ -16,7 +16,10 @@ else
   git pull
 fi
 
-cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main
 git switch VagrantRepoInstall
 
+cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main
 ./gradlew build
+
+cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part2
+./gradlew bootJar
