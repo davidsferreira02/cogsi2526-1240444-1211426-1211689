@@ -71,17 +71,23 @@
 
 Vagrant.configure("2") do |config|
   config.vm.box = "bento/ubuntu-22.04"
+
+  # Default synced folder: the folder with this Vagrantfile mounted at /vagrant
   config.vm.synced_folder ".", "/vagrant"
-  config.vm.provision "shell", run: "always" do |s|
-    s.inline = <<-SHELL
-      sudo apt-get update
-      sudo apt-get install -y git default-jdk maven gradle
-      java -version
-      javac -version
-      mvn -v
-      gradle -v
-    SHELL
-  end
+
+  # Also mount the CA2 projects for convenience (read-only host code access inside VM)
+  config.vm.synced_folder "../../CA2/Part2", "/ca2/part2"
+
+  # Forward Spring Boot web app port to host (useful for H2 console)
+  config.vm.network "forwarded_port", guest: 8080, host: 8080, host_ip: "127.0.0.1"
+
+  # Ensure persistent H2 folder on the shared /vagrant path
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo mkdir -p /vagrant/data/h2
+    sudo chown -R vagrant:vagrant /vagrant/data/h2
+  SHELL
+
+  # (bootstrap.sh removed) Inline provision above already ensures the H2 directory exists
 end
 
 

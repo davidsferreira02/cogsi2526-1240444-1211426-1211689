@@ -1787,6 +1787,8 @@ Verificando a compilação e ordenação dos testes resta apenas validar o seu r
 
 Como podemos, ver os testes obtiveram um resultado positivo, garantindo assim o objetivo do *issue*, apesar de em *Ant* não existir algo equivalente a *Source Sets*.
 
+
+
 # Technical Report CA03
 
 ## Issue 37 - Create Vagrant VM and automate dependency installation using provisioning script
@@ -1875,4 +1877,93 @@ Validação do acesso à máquina:
     Use of this system is acceptance of the OS vendor EULA and License Agreements.
     Last login: Wed Oct 29 01:52:53 2025 from 192.168.244.2
     vagrant@vagrant:~$
+
+## Issue 41 - Ensure H2 Database Persistence 
+
+Objetivo: garantir que a base de dados H2 da aplicação Spring Boot persiste em disco entre reinícios da aplicação/VM, usando uma pasta partilhada (sincronizada) da VM.
+
+### Configuração da Base de Dados
+
+No ficheiro `CA2/Part2/app/src/main/resources/application.properties` foi configurada uma BD H2 baseada em ficheiro e ativada a consola H2:
+
+```properties
+server.port=8080
+
+# H2 em ficheiro numa pasta persistente da VM (partilhada com o host)
+spring.datasource.url=jdbc:h2:file:/vagrant/data/h2/payrolldb
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+
+# Manter o esquema e evoluir automaticamente
+spring.jpa.hibernate.ddl-auto=update
+
+# Consola H2 para inspeção
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
+
+# Opcional: o Hibernate 6 deteta H2 automaticamente; se existir esta linha pode ser removida para evitar aviso
+# spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect
+```
+
+Notas importantes sobre H2 2.x:
+
+- Não usar os flags antigos no URL (`AUTO_SERVER=TRUE`, `DB_CLOSE_ON_EXIT=FALSE`), pois geram o erro “Feature not supported”. O URL acima é suficiente.
+- O caminho `/vagrant/...` existe na VM criada em CA3/Part1 (pasta partilhada). Assim, os ficheiros da BD ficam no host em `CA3/Part1/data/h2/`.
+
+### Como executar e validar a persistência (passo a passo)
+
+1) Iniciar VM (em `CA3/Part1/`):
+
+```bash
+cd ../../CA3/Part1
+vagrant up
+```
+
+2) Iniciar a aplicação Spring Boot dentro da VM (usa o projeto sincronizado `CA2/Part2`):
+
+```bash
+vagrant ssh -c "bash -lc 'cd /ca2/part2 && ./gradlew :app:bootRun'"
+```
+
+3) Confirmar que a app arrancou e que a consola H2 está disponível:
+
+- API: http://127.0.0.1:8080/employees
+- Consola H2: http://127.0.0.1:8080/h2-console
+    - JDBC URL: `jdbc:h2:file:/vagrant/data/h2/payrolldb`
+    - User: `sa`
+    - Password: `password`
+
+4) Criar um registo (exemplo) e verificar:
+
+```bash
+
+curl -s -H 'Content-Type: application/json' \
+    -d '{"firstName":"Sam","lastName":"Gamgee","role":"gardener"}' \
+    http://127.0.0.1:8080/employees -o /dev/null -w '%{http_code}\n'
+
+
+curl -s http://127.0.0.1:8080/employees | jq '.'
+```
+
+5) Reiniciar a aplicação e verificar que os dados persistem:
+
+```bash
+
+vagrant ssh -c "bash -lc 'if [ -f /home/vagrant/spring_app.pid ]; then kill -9 \$(cat /home/vagrant/spring_app.pid) || true; fi'"
+
+vagrant ssh -c "bash -lc 'cd /ca2/part2 && ./gradlew :app:bootRun'"
+
+
+curl -s http://127.0.0.1:8080/employees | jq '.'
+```
+
+6) Confirmar que os ficheiros da BD estão no host (persistência em disco):
+
+```bash
+ls -la ../../CA3/Part1/data/h2/
+```
+
+Deverá ver ficheiros `payrolldb.*` (por exemplo, `.mv.db`). Estes residem no host e sobrevivem a reinícios da VM e da aplicação.
+
 
