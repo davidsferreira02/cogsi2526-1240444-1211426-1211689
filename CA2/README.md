@@ -1937,3 +1937,54 @@ Como podemos ver existe a clonagem do repositório, algo que também pode ser co
     vagrant@vagrant:/vagrant$ ls
     cogsi2526-1240444-1211426-1211689  provision.sh  Vagrantfile
     vagrant@vagrant:/vagrant$ 
+
+Posto isto, é validado também se o *git pull* executa caso o repositório já tenha sido clonado. Isto acontece, como podemos ver o *output* gerado pelo comando ***vagrant up --provision***, que executa novamente o *script* ***provision.sh***:
+
+        default: git is already the newest version (1:2.34.1-1ubuntu1.15).
+        default: 0 upgraded, 0 newly installed, 0 to remove and 13 not upgraded.
+        default: openjdk version "11.0.28" 2025-07-15
+        default: OpenJDK Runtime Environment (build 11.0.28+6-post-Ubuntu-1ubuntu122.04.1)
+        default: OpenJDK 64-Bit Server VM (build 11.0.28+6-post-Ubuntu-1ubuntu122.04.1, mixed mode, sharing)
+        default: javac 11.0.28
+        default: Apache Maven 3.6.3
+        default: Maven home: /usr/share/maven
+        default: Java version: 11.0.28, vendor: Ubuntu, runtime: /usr/lib/jvm/java-11-openjdk-amd64
+        default: Default locale: en_US, platform encoding: UTF-8
+        default: OS name: "linux", version: "5.15.0-160-generic", arch: "amd64", family: "unix"
+        default: WARNING: An illegal reflective access operation has occurred
+        default: WARNING: Illegal reflective access by org.codehaus.groovy.reflection.CachedClass (file:/usr/share/java/groovy-all.jar) to method java.lang.Object.finalize()
+        default: WARNING: Please consider reporting this to the maintainers of org.codehaus.groovy.reflection.CachedClass
+        default: WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+        default: WARNING: All illegal access operations will be denied in a future release
+        default:
+        default: ------------------------------------------------------------
+        default: Gradle 4.4.1
+        default: ------------------------------------------------------------
+        default:
+        default: Build time:   2012-12-21 00:00:00 UTC
+        default: Revision:     none
+        default:
+        default: Groovy:       2.4.21
+        default: Ant:          Apache Ant(TM) version 1.10.12 compiled on January 17 1970
+        default: JVM:          11.0.28 (Ubuntu 11.0.28+6-post-Ubuntu-1ubuntu122.04.1)
+        default: OS:           Linux 5.15.0-160-generic amd64
+        default:
+        default: Already up to date.
+
+Como podemos ver o *git pull* é executado como podemos ver na última linha do *output* acima.
+
+De seguida, foram adicionadas as seguintes linhas ao ficheiro ***provision.sh*** para fazer *build* aos projetos:
+
+    sudo apt install -y xvfb
+    git switch VagrantRepoInstall
+
+    cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main
+    xvfb-run ./gradlew build
+
+    cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part2
+    ./gradlew bootJar
+
+A primeira linha é para instalar a ferramenta ***xvfb***, esta foi feita especificamente para ambientes *linux* e serve para executar operações gráficas em memória virtual permitindo, neste caso, executar os testes sem a necessidade de um ambiente gráfico. De notar ainda, que a *flag* ***-y*** serve para aceitar todos os *prompts* de autorização que possam aparecer durante a instalação do mesmo. De seguida, navegou-se pela árvore de diretórios até chegarmos ao ficheiro *build.gradle* de ambos os projetos e foi foram feitos os *builds* de ambos.
+
+Para validarmos o resultado, fez-se o *commit* destas alterações e executou-se o comando ***vagrant up --provision***, este executa apenas o *script* construído de forma. Sendo o resultado o seguinte *output*:
+
