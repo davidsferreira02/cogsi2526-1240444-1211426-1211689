@@ -16,6 +16,7 @@ else
   git pull
 fi
 
+sudo apt install xvfb
 git switch VagrantRepoInstall
 
 cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main
