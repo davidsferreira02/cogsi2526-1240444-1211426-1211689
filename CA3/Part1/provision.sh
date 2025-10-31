@@ -19,9 +19,4 @@ fi
 cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main
 git switch VagrantRepoInstall
 
-./gradlew runServer &
-PID=$!
-
-sleep 10
-kill -SIGINT $PID
-wait $PID 2>/dev/null
+./gradlew build
