@@ -20,10 +20,13 @@ sudo mkdir -p /vagrant/data/h2
 sudo chown -R vagrant:vagrant /vagrant/data/h2
 
 sudo apt install -y xvfb
-git switch VagrantRepoInstall
+git switch AppAccessHost
 
 cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main
 xvfb-run ./gradlew build
 
 cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part2
 ./gradlew bootJar
+
+cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main
+./gradlew runServer

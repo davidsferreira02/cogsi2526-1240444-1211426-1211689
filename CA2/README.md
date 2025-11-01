@@ -1878,3 +1878,239 @@ Validação do acesso à máquina:
     Last login: Wed Oct 29 01:52:53 2025 from 192.168.244.2
     vagrant@vagrant:~$
 
+## Issue 38 - Clone Repository and Build Projects
+
+Para se concretizar o objetivo deste *issue* começou-se por tratar da parte da clonagem do repositório. Para isso, foi necessário realizar um *workaround*, pois o ambiente onde foi criada a máquina virtual foi corrida é um ambiente *Windows* e por isso as clonagens de repositórios via SSH náo funcionam de forma totalmente correta. Posto isto, o repositório foi colocado público por breves momentos e o repositório foi clonado via HTTPS para a máquina criada através do ***Vagrant***. Exposta esta situação passa-se a explicar as alterações feitas ao ficheiro ***provision.sh*** para a clonagem do repositório:
+
+    cd /vagrant
+    if [ ! -d "cogsi2526-1240444-1211426-1211689" ]; then
+      git clone https://github.com/davidsferreira02/cogsi2526-1240444-1211426-1211689.git cogsi2526-1240444-1211426-1211689
+    else
+      cd cogsi2526-1240444-1211426-1211689
+      git pull
+    fi
+
+O *if statement* que foi adicionado ao ficheiro tem como objetivo, dentro do diretório *vagrant*, que é a pasta partilhada com o *host*, verificar se já existe um repositório com o nome do nosso. Caso não exista este vai fazer *clone* do projeto a primeira vez, caso já exista um projeto o *script* irá executar um *git pull* para obter a versáo mais atualizada do repositório.
+
+Para validarmos este método, podemos observar o resultado do comando ***vagrant up***, especialmente a parte final, logo a seguir ao *print* das versões dos pacotes instalados.
+
+        default: openjdk version "11.0.28" 2025-07-15
+        default: OpenJDK Runtime Environment (build 11.0.28+6-post-Ubuntu-1ubuntu122.04.1)
+        default: OpenJDK 64-Bit Server VM (build 11.0.28+6-post-Ubuntu-1ubuntu122.04.1, mixed mode, sharing)
+        default: javac 11.0.28
+        default: Apache Maven 3.6.3
+        default: Maven home: /usr/share/maven
+        default: Java version: 11.0.28, vendor: Ubuntu, runtime: /usr/lib/jvm/java-11-openjdk-amd64
+        default: Default locale: en_US, platform encoding: UTF-8
+        default: OS name: "linux", version: "5.15.0-160-generic", arch: "amd64", family: "unix"
+        default: WARNING: An illegal reflective access operation has occurred
+        default: WARNING: Illegal reflective access by org.codehaus.groovy.reflection.CachedClass (file:/usr/share/java/groovy-all.jar) to method java.lang.Object.finalize()
+        default: WARNING: Please consider reporting this to the maintainers of org.codehaus.groovy.reflection.CachedClass
+        default: WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+        default: WARNING: All illegal access operations will be denied in a future release
+        default:
+        default: ------------------------------------------------------------
+        default: Gradle 4.4.1
+        default: ------------------------------------------------------------
+        default:
+        default: Build time:   2012-12-21 00:00:00 UTC
+        default: Revision:     none
+        default:
+        default: Groovy:       2.4.21
+        default: Ant:          Apache Ant(TM) version 1.10.12 compiled on January 17 1970
+        default: JVM:          11.0.28 (Ubuntu 11.0.28+6-post-Ubuntu-1ubuntu122.04.1)
+        default: OS:           Linux 5.15.0-160-generic amd64
+        default:
+        default: Cloning into 'cogsi2526-1240444-1211426-1211689'...
+    Updating files: 100% (387/387), done.7/387)
+
+**NOTA**: *output* abreviado de forma a focar o output pretendido.
+
+Como podemos ver existe a clonagem do repositório, algo que também pode ser confirmado no interior da máquina virtual, usando o comando ***vagrant ssh*** e navengando na árvore de diretórios e verificarmos a pasta partilhada e validar se a pasta do projeto está presente na mesma, como mostra o seguinte *output*:
+
+    vagrant@vagrant:~$ cd ..
+    vagrant@vagrant:/home$ cd ..
+    vagrant@vagrant:/$ ls
+    bin   cdrom  etc   lib    lib64   lost+found  mnt  proc  run   snap  swap.img  tmp  vagrant
+    boot  dev    home  lib32  libx32  media       opt  root  sbin  srv   sys       usr  var
+    vagrant@vagrant:/$
+    vagrant@vagrant:/$
+    vagrant@vagrant:/$ cd vagrant/
+    vagrant@vagrant:/vagrant$ ls
+    cogsi2526-1240444-1211426-1211689  provision.sh  Vagrantfile
+    vagrant@vagrant:/vagrant$ 
+
+Posto isto, é validado também se o *git pull* executa caso o repositório já tenha sido clonado. Isto acontece, como podemos ver o *output* gerado pelo comando ***vagrant up --provision***, que executa novamente o *script* ***provision.sh***:
+
+        default: git is already the newest version (1:2.34.1-1ubuntu1.15).
+        default: 0 upgraded, 0 newly installed, 0 to remove and 13 not upgraded.
+        default: openjdk version "11.0.28" 2025-07-15
+        default: OpenJDK Runtime Environment (build 11.0.28+6-post-Ubuntu-1ubuntu122.04.1)
+        default: OpenJDK 64-Bit Server VM (build 11.0.28+6-post-Ubuntu-1ubuntu122.04.1, mixed mode, sharing)
+        default: javac 11.0.28
+        default: Apache Maven 3.6.3
+        default: Maven home: /usr/share/maven
+        default: Java version: 11.0.28, vendor: Ubuntu, runtime: /usr/lib/jvm/java-11-openjdk-amd64
+        default: Default locale: en_US, platform encoding: UTF-8
+        default: OS name: "linux", version: "5.15.0-160-generic", arch: "amd64", family: "unix"
+        default: WARNING: An illegal reflective access operation has occurred
+        default: WARNING: Illegal reflective access by org.codehaus.groovy.reflection.CachedClass (file:/usr/share/java/groovy-all.jar) to method java.lang.Object.finalize()
+        default: WARNING: Please consider reporting this to the maintainers of org.codehaus.groovy.reflection.CachedClass
+        default: WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+        default: WARNING: All illegal access operations will be denied in a future release
+        default:
+        default: ------------------------------------------------------------
+        default: Gradle 4.4.1
+        default: ------------------------------------------------------------
+        default:
+        default: Build time:   2012-12-21 00:00:00 UTC
+        default: Revision:     none
+        default:
+        default: Groovy:       2.4.21
+        default: Ant:          Apache Ant(TM) version 1.10.12 compiled on January 17 1970
+        default: JVM:          11.0.28 (Ubuntu 11.0.28+6-post-Ubuntu-1ubuntu122.04.1)
+        default: OS:           Linux 5.15.0-160-generic amd64
+        default:
+        default: Already up to date.
+
+Como podemos ver o *git pull* é executado como podemos ver na última linha do *output* acima.
+
+De seguida, foram adicionadas as seguintes linhas ao ficheiro ***provision.sh*** para fazer *build* aos projetos:
+
+    sudo apt install -y xvfb
+    git switch VagrantRepoInstall
+
+    cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main
+    xvfb-run ./gradlew build
+
+    cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part2
+    ./gradlew bootJar
+
+**NOTA**: O comando *git switch VagrantRepoInstall* foi usado, porque neste caso esse foi o *branch* onde solução foi desenvolida. Cada issue terá o seu nome neste comando.
+
+A primeira linha é para instalar a ferramenta ***xvfb***, esta foi feita especificamente para ambientes *linux* e serve para executar operações gráficas em memória virtual permitindo, neste caso, executar os testes sem a necessidade de um ambiente gráfico. De notar ainda, que a *flag* ***-y*** serve para aceitar todos os *prompts* de autorização que possam aparecer durante a instalação do mesmo. De seguida, navegou-se pela árvore de diretórios até chegarmos ao ficheiro *build.gradle* de ambos os projetos e foi foram feitos os *builds* de ambos.
+
+Para validarmos o resultado, fez-se o *commit* destas alterações e executou-se o comando ***vagrant up --provision***, este executa apenas o *script* construído de forma. Sendo o resultado o seguinte *output*:
+
+    default: xvfb is already the newest version (2:21.1.4-2ubuntu1.7~22.04.16).
+    default: 0 upgraded, 0 newly installed, 0 to remove and 13 not upgraded.
+    default: Switched to a new branch 'VagrantRepoInstall'
+    default: Branch 'VagrantRepoInstall' set up to track remote branch 'VagrantRepoInstall' from 'origin'.
+    default: > Task :compileJava UP-TO-DATE
+    default: > Task :processResources UP-TO-DATE
+    default: > Task :classes UP-TO-DATE
+    default: > Task :jar UP-TO-DATE
+    default: > Task :startScripts UP-TO-DATE
+    default: > Task :distTar UP-TO-DATE
+    default: > Task :distZip UP-TO-DATE
+    default: > Task :assemble UP-TO-DATE
+    default: > Task :compileTestJava
+    default: > Task :processTestResources NO-SOURCE
+    default: > Task :testClasses
+    default: > Task :test
+    default: > Task :check
+    default: > Task :build
+    default:
+    default: Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+    default:
+    default: You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+    default:
+    default: For more on this, please refer to https://docs.gradle.org/8.9/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+    default:
+    default: BUILD SUCCESSFUL in 2s
+    default: 8 actionable tasks: 2 executed, 6 up-to-date
+    default: Calculating task graph as configuration cache cannot be reused because the file system entry 'app/build/classes/java/main' has been created.
+    default: > Task :app:processResources NO-SOURCE
+    default: > Task :app:compileJava UP-TO-DATE
+    default: > Task :app:classes UP-TO-DATE
+    default: > Task :app:resolveMainClassName UP-TO-DATE
+    default: > Task :app:bootJar UP-TO-DATE
+    default:
+    default: [Incubating] Problems report is available at: file:///vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part2/build/reports/problems/problems-report.html
+    default:
+    default: Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+    default:
+    default: You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+    default:
+    default: For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+    default:
+    default: BUILD SUCCESSFUL in 1s
+    default: 3 actionable tasks: 3 up-to-date
+    default: Configuration cache entry stored.
+
+Como podemos observar, ambos os projetos concluem com sucesso o *build*.
+
+## Issue 39 - Access Applications from Host Machine 
+
+Para permitir a interação entre *host* e VM, é necessário alterar o ficheiro ***provision.sh*** para após o *build* colocar-se em execução, na VM, o módulo de servidor. Para isso, adicionaram-se as seguintes linhas ao final do ficheiro:
+
+    cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main
+    ./gradlew runServer
+
+Desta maneira, após os *builds* serem feitos, o módulo do servidor da *app* é colocado em execução.
+
+Para se testar a comunicação entre VM e *host* é necessário colocar em execução, no *host*, o módulo de cliente apontando para o servidor criado na VM. Para isso, entrou-se via SSH na VM criada, através do comando ***vagrant ssh***, de forma a obter o IP da mesma, dado que este foi atribuído de forma dinâmica.
+
+    PS C:\Shared\cogsi2526-1240444-1211426-1211689\CA3\Part1> vagrant ssh
+    Welcome to Ubuntu 22.04.5 LTS (GNU/Linux 5.15.0-160-generic x86_64)
+
+     * Documentation:  https://help.ubuntu.com
+     * Management:     https://landscape.canonical.com
+     * Support:        https://ubuntu.com/pro
+
+     System information as of Sat Nov  1 01:08:23 AM UTC 2025
+
+      System load:  0.31               Processes:             215
+      Usage of /:   21.4% of 30.34GB   Users logged in:       0
+      Memory usage: 47%                IPv4 address for eth0: 192.168.244.162
+      Swap usage:   0%
+
+
+    This system is built by the Bento project by Chef Software
+    More information can be found at https://github.com/chef/bento
+
+    Use of this system is acceptance of the OS vendor EULA and License Agreements.
+    vagrant@vagrant:~$
+
+ Como podemos ver no *banner* de *login* o IP da VM é o 192.168.244.162. Sendo assim, alterou-se a *task **runClient*** no ficheiro, ***build.gradle***, passando este IP como paramêtro como podemos ver de seguida:
+
+    task runClient(type:JavaExec, dependsOn: classes){
+        group = "DevOps"
+        description = "Launches a chat client that connects to a server on localhost:59001 "
+    
+        classpath = sourceSets.main.runtimeClasspath
+
+        mainClass = 'basic_demo.ChatClientApp'
+
+        args '192.168.244.162', '59001'
+    }
+
+De seguida, foi colocado em execução o módulo do servidor na VM e de seguida o módulo do cliente no *host*:
+
+    default: BUILD SUCCESSFUL in 1m 4s
+    default: 4 actionable tasks: 4 executed
+    default: Configuration cache entry stored.
+    default: > Task :compileJava UP-TO-DATE
+    default: > Task :processResources UP-TO-DATE
+    default: > Task :classes UP-TO-DATE
+    default: > Task :jar UP-TO-DATE
+    default: > Task :startScripts UP-TO-DATE
+    default: > Task :distTar UP-TO-DATE
+    default: > Task :distZip UP-TO-DATE
+    default: > Task :assemble UP-TO-DATE
+    default: > Task :compileTestJava UP-TO-DATE
+    default: > Task :processTestResources NO-SOURCE
+    default: > Task :testClasses UP-TO-DATE
+    default: > Task :test UP-TO-DATE
+    default: > Task :check UP-TO-DATE
+    default: > Task :build UP-TO-DATE
+    default:
+    default: > Task :runServer
+    default: The chat server is running...
+    default: 01:13:13.575 [pool-1-thread-3] INFO  basic_demo.ChatServer.Handler - A new user has joined: John Doe
+
+Para além do *output* acima, que revela que existe uma conexão do utilizador *John Doe*, foi aberta uma janela *pop-up* onde foi pedido um nome como mostra a seguinte imagem:
+
+![Janela Pop-Up com pedido de nome para ChatClient](img/chatclient/ChatClientNamePrompt.png)
+
+Dados estas validações podemos afirmar que a conexão entre VM e *Host* ocorre com sucesso.
