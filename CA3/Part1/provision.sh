@@ -1,8 +1,8 @@
 #!/bin/bash
 
-CLONE_REPO="${CLONE_REPO:-true}"
-BUILD_PROJECT="${BUILD_PROJECT:-true}"
-START_SERVICES="${START_SERVICES:-true}"
+CLONE_REPO="${CLONE_REPO:-false}"
+BUILD_PROJECT="${BUILD_PROJECT:-false}"
+START_SERVICES="${START_SERVICES:-false}"
 
 # Install necessary packages and show versions for validation
 sudo apt-get update -y
@@ -59,7 +59,7 @@ else
   echo "[provision] Project build skipped."
 fi
 
-if [ true = true ]; then
+if [ "$START_SERVICES" = true ]; then
   echo "[provision] Starting services..."
   
   # Start Chat Server (Part1) in background
@@ -79,6 +79,7 @@ if [ true = true ]; then
     echo "[provision] Starting Spring Boot Payroll application on port 8080..."
     cd "$PART2_DIR"
     SPRING_DATASOURCE_URL=jdbc:h2:/vagrant/data/h2/payroll \
+    SPRING_JPA_HIBERNATE_DDL_AUTO="update" \
     SPRING_H2_CONSOLE_ENABLED=true \
     nohup ./gradlew bootRun > /vagrant/payroll-app.log 2>&1 &
     echo "[provision] Payroll application started. Logs: /vagrant/payroll-app.log"

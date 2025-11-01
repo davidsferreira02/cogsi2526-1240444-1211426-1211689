@@ -80,7 +80,7 @@ Vagrant.configure("2") do |config|
 
   clone_repo = ENV.fetch("PROVISION_CLONE_REPO", "true")
   build_project = ENV.fetch("PROVISION_BUILD_PROJECT", "true")
-  start_services = ENV.fetch("PROVISION_START_SERVICES", "false")
+  start_services = ENV.fetch("PROVISION_START_SERVICES", "true")
   
   config.ssh.forward_agent = true
   config.vm.provision "shell", path: "provision.sh", env: {
