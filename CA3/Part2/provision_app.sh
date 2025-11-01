@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DB_IP=${DB_IP:-192.168.56.10}
+DB_IP=${DB_IP:-192.168.244.171}
 BUILD_APP=${BUILD_APP:-true}
 START_APP=${START_APP:-true}
 APP_PROJECT_DIR=${APP_PROJECT_DIR:-/workspace/CA2/Part2}
