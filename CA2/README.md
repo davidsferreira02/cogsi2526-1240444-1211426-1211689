@@ -2035,3 +2035,14 @@ Para validarmos o resultado, fez-se o *commit* destas alterações e executou-se
     default: Configuration cache entry stored.
 
 Como podemos observar, ambos os projetos concluem com sucesso o *build*.
+
+## Issue 39 - Access Applications from Host Machine 
+
+Para permitir a interação entre *host* e VM, é necessário alterar o ficheiro ***provision.sh*** para após o *build* colocar-se em execução, na VM, o módulo de servidor. Para isso, adicionaram-se as seguintes linhas ao final do ficheiro:
+
+    cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part1/gradle_basic_demo-main
+    ./gradlew runServer
+
+Desta maneira, após os *builds* serem feitos, o módulo do servidor da *app* é colocado em execução.
+
+Para se testar a comunicação entre VM e *host* é necessário colocar em execução, no *host*, o módulo de cliente apontando para o servidor criado na VM. Para isso, entrou-se via SSH na VM criada, através do comando ***vagrant ssh***, de forma a  alterou-se a *task* no ficheiro ***build.gradle***
