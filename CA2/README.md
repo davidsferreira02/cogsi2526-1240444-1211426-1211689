@@ -1984,6 +1984,8 @@ De seguida, foram adicionadas as seguintes linhas ao ficheiro ***provision.sh***
     cd /vagrant/cogsi2526-1240444-1211426-1211689/CA2/Part2
     ./gradlew bootJar
 
+**NOTA**: O comando *git switch VagrantRepoInstall* foi usado, porque neste caso esse foi o *branch* onde solução foi desenvolida. Cada issue terá o seu nome neste comando.
+
 A primeira linha é para instalar a ferramenta ***xvfb***, esta foi feita especificamente para ambientes *linux* e serve para executar operações gráficas em memória virtual permitindo, neste caso, executar os testes sem a necessidade de um ambiente gráfico. De notar ainda, que a *flag* ***-y*** serve para aceitar todos os *prompts* de autorização que possam aparecer durante a instalação do mesmo. De seguida, navegou-se pela árvore de diretórios até chegarmos ao ficheiro *build.gradle* de ambos os projetos e foi foram feitos os *builds* de ambos.
 
 Para validarmos o resultado, fez-se o *commit* destas alterações e executou-se o comando ***vagrant up --provision***, este executa apenas o *script* construído de forma. Sendo o resultado o seguinte *output*:
@@ -2045,4 +2047,68 @@ Para permitir a interação entre *host* e VM, é necessário alterar o ficheiro
 
 Desta maneira, após os *builds* serem feitos, o módulo do servidor da *app* é colocado em execução.
 
-Para se testar a comunicação entre VM e *host* é necessário colocar em execução, no *host*, o módulo de cliente apontando para o servidor criado na VM. Para isso, entrou-se via SSH na VM criada, através do comando ***vagrant ssh***, de forma a  alterou-se a *task* no ficheiro ***build.gradle***
+Para se testar a comunicação entre VM e *host* é necessário colocar em execução, no *host*, o módulo de cliente apontando para o servidor criado na VM. Para isso, entrou-se via SSH na VM criada, através do comando ***vagrant ssh***, de forma a obter o IP da mesma, dado que este foi atribuído de forma dinâmica.
+
+    PS C:\Shared\cogsi2526-1240444-1211426-1211689\CA3\Part1> vagrant ssh
+    Welcome to Ubuntu 22.04.5 LTS (GNU/Linux 5.15.0-160-generic x86_64)
+
+     * Documentation:  https://help.ubuntu.com
+     * Management:     https://landscape.canonical.com
+     * Support:        https://ubuntu.com/pro
+
+     System information as of Sat Nov  1 01:08:23 AM UTC 2025
+
+      System load:  0.31               Processes:             215
+      Usage of /:   21.4% of 30.34GB   Users logged in:       0
+      Memory usage: 47%                IPv4 address for eth0: 192.168.244.162
+      Swap usage:   0%
+
+
+    This system is built by the Bento project by Chef Software
+    More information can be found at https://github.com/chef/bento
+
+    Use of this system is acceptance of the OS vendor EULA and License Agreements.
+    vagrant@vagrant:~$
+
+ Como podemos ver no *banner* de *login* o IP da VM é o 192.168.244.162. Sendo assim, alterou-se a *task **runClient*** no ficheiro, ***build.gradle***, passando este IP como paramêtro como podemos ver de seguida:
+
+    task runClient(type:JavaExec, dependsOn: classes){
+        group = "DevOps"
+        description = "Launches a chat client that connects to a server on localhost:59001 "
+    
+        classpath = sourceSets.main.runtimeClasspath
+
+        mainClass = 'basic_demo.ChatClientApp'
+
+        args '192.168.244.162', '59001'
+    }
+
+De seguida, foi colocado em execução o módulo do servidor na VM e de seguida o módulo do cliente no *host*:
+
+    default: BUILD SUCCESSFUL in 1m 4s
+    default: 4 actionable tasks: 4 executed
+    default: Configuration cache entry stored.
+    default: > Task :compileJava UP-TO-DATE
+    default: > Task :processResources UP-TO-DATE
+    default: > Task :classes UP-TO-DATE
+    default: > Task :jar UP-TO-DATE
+    default: > Task :startScripts UP-TO-DATE
+    default: > Task :distTar UP-TO-DATE
+    default: > Task :distZip UP-TO-DATE
+    default: > Task :assemble UP-TO-DATE
+    default: > Task :compileTestJava UP-TO-DATE
+    default: > Task :processTestResources NO-SOURCE
+    default: > Task :testClasses UP-TO-DATE
+    default: > Task :test UP-TO-DATE
+    default: > Task :check UP-TO-DATE
+    default: > Task :build UP-TO-DATE
+    default:
+    default: > Task :runServer
+    default: The chat server is running...
+    default: 01:13:13.575 [pool-1-thread-3] INFO  basic_demo.ChatServer.Handler - A new user has joined: John Doe
+
+Para além do *output* acima, que revela que existe uma conexão do utilizador *John Doe*, foi aberta uma janela *pop-up* onde foi pedido um nome como mostra a seguinte imagem:
+
+![Janela Pop-Up com pedido de nome para ChatClient](img/chatclient/ChatClientNamePrompt.png)
+
+Dados estas validações podemos afirmar que a conexão entre VM e *Host* ocorre com sucesso.
