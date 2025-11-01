@@ -2235,3 +2235,76 @@ Serviço H2 (trecho relevante):
 
 - `provision_app.sh`: garante que `application.properties` aponta para `jdbc:h2:tcp://192.168.56.10:9092/./payrolldb`, faz o build e cria o serviço `systemd` da aplicação.
 
+## Issue 44 - Ensure that your VMs are allocated sufficient resources 
+
+Para certificarmo-nos que as VM's têm os recursos que queremos é necessário alterar o método criado no ficheiro ***Vagrantfile***. Neste, sob a configuração de cada máquina, colocamos os valores que queremos relativamente ao número de CPU's e memória RAM, como podemos ver de seguida.
+
+    # App resources
+    app.vm.provider :virtualbox do |vb|
+      vb.cpus = 2
+      vb.memory = 2048
+    end
+    app.vm.provider :vmware_desktop do |v|
+      v.vmx["numvcpus"] = "2"
+      v.vmx["memsize"]  = "2048"
+    end
+
+    # Minimal resources for H2 server
+    db.vm.provider :virtualbox do |vb|
+      vb.cpus = 1
+      vb.memory = 1024
+    end
+    db.vm.provider :vmware_desktop do |v|
+      v.vmx["numvcpus"] = "1"
+      v.vmx["memsize"]  = "1024"
+    end
+
+**NOTA**: Apenas os excertos relacionados com a alocação de recursos estão presentes, a totalidade do método não é apresentada para uma melhor apresentação.
+
+Como podemos ver, são definidos valores especificos para cada máquina criada. É importante sublinhar que os recursos foram definidos tanto para *VMware* como para *VirtualBox* de forma a ser possível escolher qual *provider* utilizar.
+
+De forma a validarmos as alterações feitas, é apenas necessário entrar nas máquinas via SSH e executar os comandos:
+
+1. **lscpu** - Para validar o número de CPU's
+2. **free -h** - Para validar a quantidade de memória RAM
+
+Posto isto, podemos observar o *output* destes mesmo comandos de seguida:
+
+    vagrant@ca3-db:/workspace/CA2/Part2$ lscpu
+    Architecture:                x86_64
+      CPU op-mode(s):            32-bit, 64-bit
+      Address sizes:             45 bits physical, 48 bits virtual
+      Byte Order:                Little Endian
+    CPU(s):                      1
+      On-line CPU(s) list:       0
+
+
+    OUTPUT ABREVIADO
+
+
+    vagrant@ca3-db:/workspace/CA2/Part2$ free -h
+                   total        used        free      shared  buff/cache   available
+    Mem:           957Mi       527Mi       183Mi       1.0Mi       246Mi       278Mi
+    Swap:          2.9Gi       128Mi       2.8Gi
+
+
+
+    vagrant@ca3-app:~$ lscpu
+    Architecture:                x86_64
+      CPU op-mode(s):            32-bit, 64-bit
+      Address sizes:             45 bits physical, 48 bits virtual
+      Byte Order:                Little Endian
+    CPU(s):                      2
+      On-line CPU(s) list:       0,1
+
+
+    OUTPUT ABREVIADO
+
+
+      vagrant@ca3-app:~$ free -h
+                   total        used        free      shared  buff/cache   available
+    Mem:           1.9Gi       719Mi       138Mi       1.0Mi       1.1Gi       1.0Gi
+    Swap:          2.9Gi       1.0Mi       2.9Gi
+
+Como podemos observar, tanto na máquina com o módulo aplicacional, como no módulo da base de dados os recursos são os definidos previamente.
+
