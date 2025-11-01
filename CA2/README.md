@@ -2114,3 +2114,74 @@ Para além do *output* acima, que revela que existe uma conexão do utilizador *
 ![Janela Pop-Up com pedido de nome para ChatClient](img/chatclient/ChatClientNamePrompt.png)
 
 Dados estas validações podemos afirmar que a conexão entre VM e *Host* ocorre com sucesso.
+
+## Issue 42 - Setup de ambiente virtual com duas VMs para executar a aplicação Gradle “Building REST services with Spring”
+
+**Objetivo**: Fornecer um ambiente com duas VMs via Vagrant para simular um cenário real com a aplicação e a base de dados em servidores distintos.
+
+- VM db: corre a base de dados H2 em modo servidor TCP (porta 9092), acessível apenas pela VM da aplicação.
+- VM app: corre a aplicação Spring Boot (Gradle), ligando à H2 através da rede privada.
+
+### Arquitetura e localização dos ficheiros (neste repositório):
+
+- Vagrantfile e scripts de provisionamento: `CA3/Part2/`
+    - `Vagrantfile`
+    - `provision_db.sh` (provisiona H2 em modo servidor)
+    - `provision_app.sh` (instala toolchain, compila e arranca a app)
+- Código da aplicação Gradle: `CA2/Part2/`
+    - App module: `CA2/Part2/app`
+    - Ficheiro de configuração: `CA2/Part2/app/src/main/resources/application.properties`
+
+### Detalhes de rede e segurança:
+
+- IPs privados
+    - DB_IP = `192.168.56.10`
+    - APP_IP = `192.168.56.11`
+- Firewall (UFW) na VM db:
+    - Permite `9092/tcp` apenas a partir de `192.168.56.11`
+    - SSH permanece acessível (para Vagrant)
+
+### Configuração de base de dados (H2):
+
+- H2 corre em modo servidor: `-tcp -tcpAllowOthers -tcpPort 9092 -baseDir /data/h2`
+- Persistência: dados guardados em `/data/h2` na VM db
+- URL JDBC utilizada pela app: `jdbc:h2:tcp://192.168.56.10:9092/./payrolldb`
+
+### Configuração da aplicação Spring (Gradle):
+
+- Java 17 e Spring Boot (plugin) configurados em `CA2/Part2/app/build.gradle`
+- O `bootJar` produz de forma determinística o artefacto `app/build/libs/app.jar` (facilita o arranque via systemd)
+- `application.properties` aponta para a H2 na VM db:
+    - `spring.datasource.url=jdbc:h2:tcp://192.168.56.10:9092/./payrolldb`
+    - `spring.datasource.driverClassName=org.h2.Driver`
+    - `spring.jpa.hibernate.ddl-auto=update`
+
+### Como executar:
+
+1. Entrar na pasta onde está o `Vagrantfile`:
+
+    cd CA3/Part2
+
+2. Correr  as VMs :
+
+    vagrant up db
+    vagrant up app
+
+3. Verificar o estado das VMs:
+
+    vagrant status
+
+Validações rápidas:
+
+- VM db (H2 ativo e porta aberta):
+
+    vagrant ssh db -c "systemctl is-active h2 && sudo ufw status && ss -lnt | grep 9092 || true"
+
+- VM app (serviço ativo e porta 8080 a escutar):
+
+    vagrant ssh app -c "systemctl is-active ca3-app && ss -lnt | grep :8080 || journalctl -u ca3-app --no-pager -n 100"
+
+
+
+
+
