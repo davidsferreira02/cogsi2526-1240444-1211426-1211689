@@ -77,7 +77,15 @@ Vagrant.configure("2") do |config|
   
   # Forward Spring Boot web app port to host (useful for H2 console)
   config.vm.network "forwarded_port", guest: 8080, host: 8080, host_ip: "127.0.0.1"
+
+  clone_repo = ENV.fetch("PROVISION_CLONE_REPO", "true")
+  build_project = ENV.fetch("PROVISION_BUILD_PROJECT", "true")
+  start_services = ENV.fetch("PROVISION_START_SERVICES", "false")
   
   config.ssh.forward_agent = true
-  config.vm.provision "shell", path: "provision.sh"
+  config.vm.provision "shell", path: "provision.sh", env: {
+                        "CLONE_REPO" => clone_repo,
+                        "BUILD_PROJECT" => build_project,
+                        "START_SERVICES" => start_services
+                      }
 end
