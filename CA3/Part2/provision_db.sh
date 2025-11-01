@@ -22,6 +22,20 @@ fi
 sudo mkdir -p /data/h2
 sudo chown vagrant:vagrant /data/h2
 
+SQL_FILE="/tmp/init_payrolldb.sql"
+cat > "${SQL_FILE}" <<'SQL'
+-- minimal init: create a marker table so H2 creates the DB files
+CREATE TABLE IF NOT EXISTS payroll_init (
+  id INT PRIMARY KEY,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+);
+SQL
+
+# Run as vagrant so files are owned correctly; use the local (filesystem) JDBC URL to create files under /data/h2
+sudo -u vagrant /usr/bin/java -cp "${H2_JAR}" org.h2.tools.RunScript \
+  -url "jdbc:h2:/data/h2/payrolldb" -user sa -password password -script "${SQL_FILE}" || true
+rm -f "${SQL_FILE}"
+
 # Create systemd service for H2 server mode
 cat << 'SERVICE' | sudo tee /etc/systemd/system/h2.service >/dev/null
 [Unit]
@@ -30,7 +44,7 @@ After=network.target
 
 [Service]
 User=vagrant
-ExecStart=/usr/bin/java -cp /opt/h2/h2-2.3.232.jar org.h2.tools.Server -tcp -tcpAllowOthers -tcpPort 9092 -baseDir /data/h2
+ExecStart=/usr/bin/java -cp ${H2_JAR} org.h2.tools.Server -tcp -tcpAllowOthers -tcpPort 9092 -baseDir /data/h2
 Restart=on-failure
 
 [Install]
