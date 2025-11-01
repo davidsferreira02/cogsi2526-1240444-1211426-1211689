@@ -399,6 +399,7 @@ Posto isto, obtivemos um projeto com a seguinte árvore de diretórios:
         ├── gradlew.bat
         └── settings.gradle
 
+
 Tendo a estrutura do projeto feita resta copiar o contéudo da pasta **links** da aplicação de teste para a pasta **src** do novo projeto dando assim por finalizando o *commit* inicial, assim, por consequência, podemos afirmar que o *Issue 30* está concluido.
 
 Passando agora à injeção de dependências necessárias, começamos por observar o ficheiro ***build.gradle*** criado:
@@ -2184,4 +2185,53 @@ Validações rápidas:
 
 
 
+
+## Issue 43 - Alterar credenciais de acesso à H2 e colocar H2 em modo servidor
+
+Objetivo: deixar de usar a configuração por omissão do Spring Boot (H2 em memória com utilizador `sa` e password vazia) e passar a:
+
+- Executar a H2 em modo servidor (processo separado) e
+- A aplicação Spring Boot ligar via JDBC (TCP) com credenciais explícitas.
+
+### Alterações efetuadas
+
+1) Configuração da aplicação (cliente JDBC)
+
+Ficheiro `CA2/Part2/app/src/main/resources/application.properties`:
+
+    server.port=8080
+
+    # Ligação ao servidor H2 (modo servidor TCP) na VM de DB
+    spring.datasource.url=jdbc:h2:tcp://192.168.56.10:9092/./payrolldb
+    spring.datasource.driverClassName=org.h2.Driver
+    spring.datasource.username=sa
+    spring.datasource.password=password  # substitui password vazia por "password"
+
+    spring.jpa.hibernate.ddl-auto=update
+    spring.jpa.show-sql=false
+    spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+    spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect
+
+    spring.jpa.properties.jakarta.persistence.jdbc.url=${spring.datasource.url}
+    spring.jpa.properties.jakarta.persistence.jdbc.user=${spring.datasource.username}
+    spring.jpa.properties.jakarta.persistence.jdbc.password=${spring.datasource.password}
+
+    spring.h2.console.enabled=true
+    spring.h2.console.path=/h2-console
+
+1) Provisionamento da base de dados (servidor H2)
+
+Na pasta `CA3/Part2/` foram criados/ajustados os scripts e VMs Vagrant:
+
+- `Vagrantfile`: define duas VMs em rede privada (DB `192.168.56.10`, APP `192.168.56.11`)
+- `provision_db.sh`: instala a H2 (JAR), cria serviço `systemd` para correr a H2 em modo servidor TCP e configura firewall (ufw)
+
+Serviço H2 (trecho relevante):
+
+                ExecStart=/usr/bin/java -cp /opt/h2/h2-2.3.232.jar \
+                    org.h2.tools.Server -tcp -tcpAllowOthers -tcpPort 9092 -baseDir /data/h2
+
+1) Provisionamento da aplicação
+
+- `provision_app.sh`: garante que `application.properties` aponta para `jdbc:h2:tcp://192.168.56.10:9092/./payrolldb`, faz o build e cria o serviço `systemd` da aplicação.
 
