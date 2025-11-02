@@ -5,8 +5,8 @@
 # - db: H2 database in server mode, exposed only to the app VM on port 9092
 # - app: Spring Boot application (Gradle) connecting to db over private network
 
-APP_IP = "192.168.244.167"
-DB_IP  = "192.168.244.166"
+APP_IP = "192.168.244.172"
+DB_IP  = "192.168.244.171"
 
 Vagrant.configure("2") do |config|
   # Improve security: replace the default insecure key with a unique key per VM
