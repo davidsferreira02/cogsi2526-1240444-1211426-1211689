@@ -2585,3 +2585,60 @@ Aliado ao sucesso do *build* executou-se o comando ***vagrant ssh-config***, par
       HostKeyAlgorithms +ssh-rsa
     
     PS C:\Shared\cogsi2526-1240444-1211426-1211689\CA3\Part2>
+
+## Tecnologia Adicional - *Canonical Multipass*
+
+O *Multipass* é uma ferramenta de orquestração de VM's desenvolvida pela *Canonical*, a mesma entidade que desenvolve a distribuição de *Linux* ***Ubuntu***. Esta tecnologia, ao contrário do ***Vagrant***, consegue fazer a gestão de apenas máquinas *Ubuntu*, dado o seu fabricante. 
+
+Na seguinte tabela é revelado alguns pontos de comparação que acredita-se que sejam relevantes quando comparamos o *Multipass* com o *Vagrant*:
+
+| **Critério** | **Multipass** | **Vagrant** |
+|---------------|----------------|--------------|
+| **Objetivo principal** | Gerir rapidamente VM's *Ubuntu* | Gerir ambientes com vários máquinas, com possibilidade de vários OS's|
+| **Levantamento de máquinas** | Simples, apenas um comando | Complexo, necessita de ficheiro de configuração |
+| **Velocidade de criação** | Muito rápida (pré-imagens *Ubuntu*) | Mais lenta (depende de *box* e *provider*) |
+| **Provisionamento** | *scripts shell* | Completo |
+| **Personalização da rede** | Atribuíção automática de IP | Altamente configurável |
+| **Suporte a múltiplos providers** | Suporte de apenas *HyperV* e *VirtualBox* em ambiente *Windows* | Suporta todos os *Providers*|
+| **Gestão de múltiplas VMs** | Simples , mas com pouca costumização | Muito completa, mas de mais difícil configuração|
+
+Feita a comparação entre ambos, passou-se a documentar os comandos:
+
+1. Criação de máquinas
+
+Para criarem-se máquinas utiliza-se o comando: ***multipass launch***. Pode-se ainda adicionar algumas *flags* para facilitar e moldar o *deployment* das máquinas:
+
+- ***-n*** - permite alterar o *hostname* da máquina.
+- ***-c*** - permite definir o número de CPU's da máquina.
+- ***-m*** - permite definir a memória RAM da máquina.
+- ***-d*** - define o disco da máquina
+- **Versão do *Ubuntu*** (Ex.:22.04) - permite definir a versão do *Ubuntu* da máquina.
+
+O aspeto de um comando que utilize todas estas *flags* é o seguinte:
+
+    multipass launch -n mymachine -c 2 -m 2G -d 10G 22.04
+
+Para além disso, é possível alterar determinadas definições de *deployment* através de variáveis configuráveis com o comando:
+
+    multipass set local.driver=<*Driver a alterar*>
+
+Da mesma forma, é possível consultar o valor atual dessas variáveis substituindo a *keyword **set*** por ***get***. Um exemplo prático é a definição do *driver* (ou *provider*):
+
+    PS C:\Shared\VM_Multipass> multipass get local.driver
+    virtualbox
+    PS C:\Shared\VM_Multipass> multipass set local.driver=hyperv
+    PS C:\Shared\VM_Multipass> multipass get local.driver
+    hyperv
+    PS C:\Shared\VM_Multipass>
+
+Podemos ainda verficar todas as máquinas criadas utilizando o ***multipass list***:
+
+    PS C:\Shared\VM_Multipass> multipass list
+    Name                    State             IPv4             Image
+    mymachine               Running           N/A              Ubuntu 22.04 LTS
+
+Tal como o *Vagrant*, o *Multipass* disponibiliza um serviço de *shell built-in* utilizando o seguinte comando:
+
+    multipass shell <nome da máquina>
+
+Como qualquer *provider*, o *Multipass* cria uma rede privada sendo o *host* o *gateway*, atribuindo, via DHCP, um IP da rede a cada VM e o acesso à *Internet* é feito porque o *host* aplica uma regra de NAT que o permite. Desta forma, uma máquina criada via *Multipass* tem todas as funcionalidades que uma criada num *provider* mais famoso, como o *Virtual Box*, da *Oracle*, ou o *VMware* da *Broadcom*, sendo possível realizar todos os passos anteriormente documentados.
