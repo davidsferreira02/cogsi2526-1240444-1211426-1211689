@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DB_IP=${DB_IP:-192.168.244.171}
+DB_IP=${DB_IP:-192.168.244.166}
 BUILD_APP=${BUILD_APP:-true}
 START_APP=${START_APP:-true}
 APP_PROJECT_DIR=${APP_PROJECT_DIR:-/workspace/CA2/Part2}
@@ -10,25 +10,22 @@ echo "[APP] Updating packages..."
 sudo apt-get update -y
 sudo apt-get install -y openjdk-17-jdk maven gradle curl jq netcat
 
-# --- Add custom SSH key (after Vagrant login succeeds) ---
-if [ -f /vagrant/app_ssh.pub ]; then
+# --- Add custom SSH key ---
+if [ -f /home/vagrant/app_ssh.pub ]; then
   echo "[APP] Adding custom SSH key..."
-  sudo mkdir -p /home/vagrant/.ssh
-  sudo grep -qxF "$(cat /vagrant/app_ssh.pub)" /home/vagrant/.ssh/authorized_keys || cat /vagrant/app_ssh.pub >> /home/vagrant/.ssh/authorized_keys
-  sudo chown -R vagrant:vagrant /home/vagrant/.ssh
-  sudo chmod 700 /home/vagrant/.ssh
-  sudo chmod 600 /home/vagrant/.ssh/authorized_keys
+  mkdir -p /home/vagrant/.ssh
+  grep -qxF "$(cat /home/vagrant/app_ssh.pub)" /home/vagrant/.ssh/authorized_keys || cat /home/vagrant/app_ssh.pub >> /home/vagrant/.ssh/authorized_keys
+  chown -R vagrant:vagrant /home/vagrant/.ssh
+  chmod 700 /home/vagrant/.ssh
+  chmod 600 /home/vagrant/.ssh/authorized_keys
 fi
 
-# (Optional) Remove default insecure key after adding yours
-# sed -i '/ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQE/d' /home/vagrant/.ssh/authorized_keys || true
-
-# --- Configure Spring app ---
+# --- Configure Spring Boot properties ---
 APP_RESOURCES_DIR="${APP_PROJECT_DIR}/app/src/main/resources"
 APP_PROPS="${APP_RESOURCES_DIR}/application.properties"
 
 if [ -f "$APP_PROPS" ]; then
-  echo "[APP] Updating application.properties with DB connection info..."
+  echo "[APP] Configuring application.properties to use H2 server at ${DB_IP}:9092"
   sudo sed -i \
     -e "s|^spring.datasource.url=.*|spring.datasource.url=jdbc:h2:tcp://${DB_IP}:9092/./payrolldb|" \
     -e "s|^spring.datasource.driverClassName=.*|spring.datasource.driverClassName=org.h2.Driver|" \
@@ -37,7 +34,7 @@ if [ -f "$APP_PROPS" ]; then
     -e "s|^spring.jpa.hibernate.ddl-auto=.*|spring.jpa.hibernate.ddl-auto=update|" \
     "$APP_PROPS"
 else
-  echo "[APP][WARN] application.properties not found. Skipping DB URL update."
+  echo "[APP][WARN] application.properties not found at ${APP_PROPS}. Skipping DB URL update."
 fi
 
 if [ "${BUILD_APP}" = "true" ]; then
@@ -46,7 +43,7 @@ if [ "${BUILD_APP}" = "true" ]; then
   ./gradlew bootJar
   popd >/dev/null
 else
-  echo "[APP] Skipping build (BUILD_APP=${BUILD_APP})"
+  echo "[APP] Skipping build due to BUILD_APP=${BUILD_APP}"
 fi
 
 echo "[APP] Waiting for H2 server at ${DB_IP}:9092..."
@@ -55,13 +52,13 @@ for i in $(seq 1 60); do
     echo "[APP] H2 is up."
     break
   fi
-  echo "[APP] Waiting... (${i}/60)"
+  echo "[APP] H2 not ready yet... (${i}/60)"
   sleep 2
 done
 
 APP_JAR="${APP_PROJECT_DIR}/app/build/libs/app.jar"
 if [ ! -f "$APP_JAR" ]; then
-  echo "[APP][ERROR] Expected JAR not found at ${APP_JAR}."
+  echo "[APP][ERROR] Expected Spring Boot jar not found at ${APP_JAR}. Aborting service creation."
   ls -l "${APP_PROJECT_DIR}/app/build/libs" || true
   exit 1
 fi
@@ -85,10 +82,10 @@ SERVICE
 
 sudo systemctl daemon-reload
 if [ "${START_APP}" = "true" ]; then
-  echo "[APP] Starting application..."
+  echo "[APP] Starting application service..."
   sudo systemctl enable --now ca3-app
 else
-  echo "[APP] Skipping app start (START_APP=${START_APP})"
+  echo "[APP] Skipping app start due to START_APP=${START_APP}"
 fi
 
-echo "[APP] Done. Accessible at http://localhost:8080"
+echo "[APP] Done. App should be reachable on host at http://localhost:8080"

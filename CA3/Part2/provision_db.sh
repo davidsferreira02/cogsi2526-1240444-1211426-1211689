@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_IP=${APP_IP:-192.168.244.170}
+APP_IP=${APP_IP:-192.168.244.167}
 START_DB=${START_DB:-true}
 
 echo "[DB] Updating packages..."
@@ -12,20 +12,17 @@ H2_VERSION="2.3.232"
 H2_DIR="/opt/h2"
 H2_JAR="${H2_DIR}/h2-${H2_VERSION}.jar"
 
-# --- Add custom SSH key (after Vagrant login succeeds) ---
-if [ -f /vagrant/db_ssh.pub ]; then
+# --- Add custom SSH key ---
+if [ -f /home/vagrant/db_ssh.pub ]; then
   echo "[DB] Adding custom SSH key..."
-  sudo mkdir -p /home/vagrant/.ssh
-  sudo grep -qxF "$(cat /vagrant/db_ssh.pub)" /home/vagrant/.ssh/authorized_keys || cat /vagrant/db_ssh.pub >> /home/vagrant/.ssh/authorized_keys
-  sudo chown -R vagrant:vagrant /home/vagrant/.ssh
-  sudo chmod 700 /home/vagrant/.ssh
-  sudo chmod 600 /home/vagrant/.ssh/authorized_keys
+  mkdir -p /home/vagrant/.ssh
+  grep -qxF "$(cat /home/vagrant/db_ssh.pub)" /home/vagrant/.ssh/authorized_keys || cat /home/vagrant/db_ssh.pub >> /home/vagrant/.ssh/authorized_keys
+  chown -R vagrant:vagrant /home/vagrant/.ssh
+  chmod 700 /home/vagrant/.ssh
+  chmod 600 /home/vagrant/.ssh/authorized_keys
 fi
 
-# (Optional) Remove default insecure key after adding yours
-# sed -i '/ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQE/d' /home/vagrant/.ssh/authorized_keys || true
-
-# --- Install and configure H2 ---
+# --- Install H2 ---
 if [ ! -f "$H2_JAR" ]; then
   echo "[DB] Installing H2 ${H2_VERSION}..."
   sudo mkdir -p "$H2_DIR"
