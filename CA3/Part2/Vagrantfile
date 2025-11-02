@@ -21,13 +21,15 @@ Vagrant.configure("2") do |config|
     db.ssh.private_key_path = "C:/db_ssh"
 
     # Inject your public key early (before SSH)
-    db.vm.provision "shell", inline: <<-SHELL
-      mkdir -p /home/vagrant/.ssh
-      echo '#{File.read("C:/db_ssh.pub").strip}' >> /home/vagrant/.ssh/authorized_keys
-      chown -R vagrant:vagrant /home/vagrant/.ssh
-      chmod 700 /home/vagrant/.ssh
-      chmod 600 /home/vagrant/.ssh/authorized_keys
-    SHELL, run: "always"
+    db.vm.provision "shell",
+      inline: %{
+        mkdir -p /home/vagrant/.ssh
+        echo '#{File.read("C:/db_ssh.pub").strip}' >> /home/vagrant/.ssh/authorized_keys
+        chown -R vagrant:vagrant /home/vagrant/.ssh
+        chmod 700 /home/vagrant/.ssh
+        chmod 600 /home/vagrant/.ssh/authorized_keys
+      },
+      run: "always"
 
     # Resources
     db.vm.provider :virtualbox do |vb|
@@ -57,13 +59,15 @@ Vagrant.configure("2") do |config|
     app.ssh.private_key_path = "C:/app_ssh"
 
     # Inject your public key early
-    app.vm.provision "shell", inline: <<-SHELL
-      mkdir -p /home/vagrant/.ssh
-      echo '#{File.read("C:/app_ssh.pub").strip}' >> /home/vagrant/.ssh/authorized_keys
-      chown -R vagrant:vagrant /home/vagrant/.ssh
-      chmod 700 /home/vagrant/.ssh
-      chmod 600 /home/vagrant/.ssh/authorized_keys
-    SHELL, run: "always"
+    app.vm.provision "shell",
+      inline: %{
+        mkdir -p /home/vagrant/.ssh
+        echo '#{File.read("C:/app_ssh.pub").strip}' >> /home/vagrant/.ssh/authorized_keys
+        chown -R vagrant:vagrant /home/vagrant/.ssh
+        chmod 700 /home/vagrant/.ssh
+        chmod 600 /home/vagrant/.ssh/authorized_keys
+      },
+      run: "always"
 
     # Resources
     app.vm.provider :virtualbox do |vb|
