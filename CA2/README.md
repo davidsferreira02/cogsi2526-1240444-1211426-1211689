@@ -2308,3 +2308,174 @@ Posto isto, podemos observar o *output* destes mesmo comandos de seguida:
 
 Como podemos observar, tanto na máquina com o módulo aplicacional, como no módulo da base de dados os recursos são os definidos previamente.
 
+## Issue 45 - Ensure that you use custom SSH keys for a secure access 
+
+Para alterarmos as chaves de SSH *default* do *Vagrant* é necessário proceder aos seguintes passos:
+
+1. Criação das chaves no *host*
+
+Este passo foi concretizado através do comandos ***ssh-keygen -t rsa -b 2048 -f C:/app_ssh*** e ***ssh-keygen -t rsa -b 2048 -f C:/db_ssh***. Estes resultaram na criação de dois pares de chaves para os dois módulos da aplicação como mostra o contéudo da pasta onde foi criado.
+
+    PS C:\> dir
+
+        Directory: C:\
+
+
+    Mode                 LastWriteTime         Length Name
+    ----                 -------------         ------ ----
+    -a----         11/2/2025  12:08 AM           1823 app_ssh
+    -a----         11/2/2025  12:08 AM            398 app_ssh.pub
+    -a----         11/2/2025  12:08 AM           1823 db_ssh
+    -a----         11/2/2025  12:08 AM            398 db_ssh.pub
+
+**NOTA**: Conteúdo da pasta foi abreviado.
+
+2. Adicionados os passos para a utilização das chaves novas
+
+Nos métodos criados para levantar ambas as VM's, no ficheiro ***Vagrantfile***, foram adicionadas as seguintes linhas:
+
+    db.ssh.private_key_path = "C:/db_ssh"
+
+    db.vm.provision "shell",
+      inline: %{
+        mkdir -p /home/vagrant/.ssh
+        echo '#{File.read("C:/db_ssh.pub").strip}' >> /home/vagrant/.ssh/authorized_keys
+        chown -R vagrant:vagrant /home/vagrant/.ssh
+        chmod 700 /home/vagrant/.ssh
+        chmod 600 /home/vagrant/.ssh/authorized_keys
+      },
+      run: "always"
+
+Estas novas linhas, colocadas logo após a definição do tipo de *box*, do *hostname* e do IP, indicam ao ***vagrant*** para utilizar as chaves privadas encontradas na pasta anteriormente referida. Em seguida, são ajustadas as permissões e o *ownership* da pasta e dos ficheiros para o utilizador *vagrant*, assegurando que o serviço SSH os reconhece corretamente. Por fim, a última linha indica que este trecho de código deve ser corrido sempre que se levantarem as máquinas ou o *provision* for refeito.
+
+O excerto apresentado corresponde ao desenvolvimento desta solução para a máquina virtual que servirá como base de dados, é de **extrema** importância sublinhar que o mesmo foi feito para a máquina que hospedará a *app*, trocando apenas as variáveis necessárias.
+
+3. Validações
+
+Para validarmos o trabalho implementado basta executarmos o comando ***vagrant*** ou ***vagrant up --provision***, caso as máquinas já tivessem sido criadas, e verificarmos o sucessdo do *build*.
+
+    PS C:\Shared\cogsi2526-1240444-1211426-1211689\CA3\Part2> vagrant up --provision
+    Bringing machine 'db' up with 'vmware_desktop' provider...
+    Bringing machine 'app' up with 'vmware_desktop' provider...
+    ==> db: Checking if box 'bento/ubuntu-22.04' version '202510.26.0' is up to date...
+    ==> db: Running provisioner: shell...
+        db: Running: inline script
+    ==> db: Running provisioner: shell...
+        db: Running: C:/Users/nunoc/AppData/Local/Temp/vagrant-shell20251102-15888-6bftbp.sh
+        db: [DB] Updating packages...
+        db: Hit:1 http://us.archive.ubuntu.com/ubuntu jammy InRelease
+        db: Hit:2 http://security.ubuntu.com/ubuntu jammy-security InRelease
+        db: Hit:3 http://us.archive.ubuntu.com/ubuntu jammy-updates InRelease
+        db: Hit:4 http://us.archive.ubuntu.com/ubuntu jammy-backports InRelease
+        db: Reading package lists...
+        db: Reading package lists...
+        db: Building dependency tree...
+        db: Reading state information...
+        db: curl is already the newest version (7.81.0-1ubuntu1.21).
+        db: ufw is already the newest version (0.36.1-4ubuntu0.1).
+        db: unzip is already the newest version (6.0-26ubuntu3.2).
+        db: openjdk-17-jre-headless is already the newest version (17.0.16+8~us1-0ubuntu1~22.04.1).
+        db: 0 upgraded, 0 newly installed, 0 to remove and 13 not upgraded.
+        db: Exception in thread "main" org.h2.jdbc.JdbcSQLNonTransientConnectionException: Database may be already in use: "/data/h2/payrolldb.mv.db". Possible solutions: close all other connection(s); use the server mode [90020-232]
+        db:         at org.h2.message.DbException.getJdbcSQLException(DbException.java:690)
+        db:         at org.h2.message.DbException.getJdbcSQLException(DbException.java:489)
+        db:         at org.h2.message.DbException.get(DbException.java:212)
+        db:         at org.h2.mvstore.db.Store.convertMVStoreException(Store.java:165)
+        db:         at org.h2.mvstore.db.Store.<init>(Store.java:142)
+        db:         at org.h2.engine.Database.<init>(Database.java:326)
+        db:         at org.h2.engine.Engine.openSession(Engine.java:92)
+        db:         at org.h2.engine.Engine.openSession(Engine.java:222)
+        db:         at org.h2.engine.Engine.createSession(Engine.java:201)
+        db:         at org.h2.engine.SessionRemote.connectEmbeddedOrServer(SessionRemote.java:344)
+        db:         at org.h2.jdbc.JdbcConnection.<init>(JdbcConnection.java:124)
+        db:         at org.h2.util.JdbcUtils.getConnection(JdbcUtils.java:291)
+        db:         at org.h2.util.JdbcUtils.getConnection(JdbcUtils.java:273)
+        db:         at org.h2.tools.RunScript.process(RunScript.java:312)
+        db:         at org.h2.tools.RunScript.runTool(RunScript.java:139)
+        db:         at org.h2.tools.RunScript.main(RunScript.java:66)
+        db: Caused by: org.h2.mvstore.MVStoreException: The file is locked: /data/h2/payrolldb.mv.db [2.3.232/7]
+        db:         at org.h2.mvstore.DataUtils.newMVStoreException(DataUtils.java:996)
+        db:         at org.h2.mvstore.SingleFileStore.lockFileChannel(SingleFileStore.java:143)
+        db:         at org.h2.mvstore.SingleFileStore.open(SingleFileStore.java:117)
+        db:         at org.h2.mvstore.SingleFileStore.open(SingleFileStore.java:81)
+        db:         at org.h2.mvstore.MVStore.<init>(MVStore.java:286)
+        db:         at org.h2.mvstore.MVStore$Builder.open(MVStore.java:2035)
+        db:         at org.h2.mvstore.db.Store.<init>(Store.java:133)
+        db:         ... 11 more
+        db: [DB] Enabling firewall...
+        db: Firewall is active and enabled on system startup
+        db: Default incoming policy changed to 'deny'
+        db: (be sure to update your rules accordingly)
+        db: Skipping adding existing rule
+        db: Skipping adding existing rule (v6)
+        db: Skipping adding existing rule
+        db: [DB] Starting H2 service...
+        db: [DB] Done. H2 should be reachable from 192.168.244.172:9092 only.
+    ==> app: Checking if box 'bento/ubuntu-22.04' version '202510.26.0' is up to date...
+    ==> app: Running provisioner: shell...
+        app: Running: inline script
+    ==> app: Running provisioner: shell...
+        app: Running: C:/Users/nunoc/AppData/Local/Temp/vagrant-shell20251102-15888-bq42yu.sh
+        app: [APP] Updating packages...
+        app: Hit:1 http://security.ubuntu.com/ubuntu jammy-security InRelease
+        app: Hit:2 http://us.archive.ubuntu.com/ubuntu jammy InRelease
+        app: Hit:3 http://us.archive.ubuntu.com/ubuntu jammy-updates InRelease
+        app: Hit:4 http://us.archive.ubuntu.com/ubuntu jammy-backports InRelease
+        app: Reading package lists...
+        app: Reading package lists...
+        app: Building dependency tree...
+        app: Reading state information...
+        app: gradle is already the newest version (4.4.1-13).
+        app: maven is already the newest version (3.6.3-5).
+        app: netcat is already the newest version (1.218-4ubuntu1).
+        app: curl is already the newest version (7.81.0-1ubuntu1.21).
+        app: jq is already the newest version (1.6-2.1ubuntu3.1).
+        app: openjdk-17-jdk is already the newest version (17.0.16+8~us1-0ubuntu1~22.04.1).
+        app: 0 upgraded, 0 newly installed, 0 to remove and 13 not upgraded.
+        app: [APP] Configuring application.properties to use H2 server at 192.168.244.171:9092
+        app: [APP] Building Spring Boot application...
+        app: Reusing configuration cache.
+        app: > Task :app:processResources
+        app: > Task :app:compileJava UP-TO-DATE
+        app: > Task :app:classes
+        app: > Task :app:resolveMainClassName
+        app: > Task :app:bootJar
+        app:
+        app: BUILD SUCCESSFUL in 2s
+        app: 4 actionable tasks: 3 executed, 1 up-to-date
+        app: Configuration cache entry reused.
+        app: [APP] Waiting for H2 server at 192.168.244.171:9092...
+        app: [APP] H2 is up.
+        app: [APP] Starting application service...
+        app: [APP] Done. App should be reachable on host at http://localhost:8080
+
+Aliado ao sucesso do *build* executou-se o comando ***vagrant ssh-config***, para se observar as definições das conexões SSH, e este revela que as chaves privadas usadas pelo *host* das máquinas foi a criada e não a que vem por *default*.
+
+    PS C:\Shared\cogsi2526-1240444-1211426-1211689\CA3\Part2> vagrant ssh-config       
+    Host db
+      HostName 127.0.0.1
+      User vagrant
+      Port 2222
+      UserKnownHostsFile /dev/null
+      StrictHostKeyChecking no
+      PasswordAuthentication no
+      IdentityFile C:/db_ssh
+      IdentitiesOnly yes
+      LogLevel FATAL
+      PubkeyAcceptedKeyTypes +ssh-rsa
+      HostKeyAlgorithms +ssh-rsa
+    
+    Host app
+      HostName 127.0.0.1
+      User vagrant
+      Port 2200
+      UserKnownHostsFile /dev/null
+      StrictHostKeyChecking no
+      PasswordAuthentication no
+      IdentityFile C:/app_ssh
+      IdentitiesOnly yes
+      LogLevel FATAL
+      PubkeyAcceptedKeyTypes +ssh-rsa
+      HostKeyAlgorithms +ssh-rsa
+    
+    PS C:\Shared\cogsi2526-1240444-1211426-1211689\CA3\Part2>
