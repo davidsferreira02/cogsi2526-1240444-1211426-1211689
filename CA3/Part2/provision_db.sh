@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_IP=${APP_IP:-192.168.244.170}
+APP_IP=${APP_IP:-192.168.244.172}
 START_DB=${START_DB:-true}
 
 echo "[DB] Updating packages..."
