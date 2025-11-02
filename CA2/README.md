@@ -2288,10 +2288,6 @@ Validações rápidas:
 
     vagrant ssh app -c "systemctl is-active ca3-app && ss -lnt | grep :8080 || journalctl -u ca3-app --no-pager -n 100"
 
-
-
-
-
 ## Issue 43 - Alterar credenciais de acesso à H2 e colocar H2 em modo servidor
 
 Objetivo: deixar de usar a configuração por omissão do Spring Boot (H2 em memória com utilizador `sa` e password vazia) e passar a:
@@ -2643,6 +2639,83 @@ app: [APP] H2 not ready yet... (60/60)
 ### Conclusão
 Após a implementação desta solução, a VM da aplicação aguarda de forma eficaz pela disponibilidade do serviço H2 na VM da base de dados antes de tentar iniciar o serviço Spring Boot. Isto melhora a robustez do processo de provisionamento e reduz a probabilidade de falhas relacionadas com a conectividade à base de dados durante o arranque da aplicação.
 
+## Issue 47 - Secure the db VM by adding firewall rules to restrict access only to the app VM
+
+### Objetivo
+
+Restringir o acesso à instância H2 que corre na VM da base de dados (porta TCP 9092) de forma a que apenas a VM da aplicação (app) possa estabelecer ligações. Isto reduz a superfície de ataque e impede acessos indesejados do host ou de redes externas.
+
+### Resumo da solução
+
+No script de provisionamento da base de dados (`provision_db.sh`) foi configurado o `ufw` para:
+
+- ativar a firewall (`ufw --force enable`),
+- definir a política por defeito para negar ligações de entrada,
+- permitir SSH para manter acesso do Vagrant,
+- permitir a porta 9092 apenas a partir do IP da VM da app (`APP_IP`).
+
+### Alterações e excertos relevantes
+
+`provision_db.sh`:
+
+```bash
+echo "[DB] Enabling firewall..."
+sudo ufw --force enable
+sudo ufw default deny incoming
+# Keep SSH accessible for Vagrant
+sudo ufw allow OpenSSH
+# Restrict H2 port to app VM only
+sudo ufw allow from "${APP_IP}" to any port 9092 proto tcp
+```
+
+### Como testar / passos de validação
+
+1. Levantar as VMs e observar a saída do provisioner:
+
+```powershell
+vagrant up
+```
+
+2. Verificar o estado do UFW na VM DB:
+
+```bash
+vagrant ssh db
+
+vagrant@ca3-db:~$ sudo ufw status
+Status: active
+
+To                         Action      From
+--                         ------      ----
+OpenSSH                    ALLOW       Anywhere
+9092/tcp                   ALLOW       192.168.244.172
+OpenSSH (v6)               ALLOW       Anywhere (v6)
+```
+
+3. Testar conectividade a partir da VM app:
+
+```bash
+vagrant@ca3-app:~$ nc -vz 192.168.244.171 9092
+Connection to 192.168.244.171 9092 port [tcp/*] succeeded!
+```
+
+4. Testar conectividade a partir do host:
+
+```powershell
+rafae ❯ Test-NetConnection -ComputerName 192.168.244.171 -Port 9092
+WARNING: TCP connect to (192.168.244.171 : 9092) failed
+
+ComputerName           : 192.168.244.171
+RemoteAddress          : 192.168.244.171
+RemotePort             : 9092
+InterfaceAlias         : Ethernet 4
+SourceAddress          : 192.168.244.1
+PingSucceeded          : True
+PingReplyDetails (RTT) : 2 ms
+TcpTestSucceeded       : False
+```
+
+### Conclusão
+Os testes confirmam que a firewall está ativa e que apenas a VM da aplicação consegue estabelecer ligações à porta 9092 da VM da base de dados, cumprindo o objetivo de segurança definido.
 
 ## Tecnologia Adicional - *Canonical Multipass*
 
