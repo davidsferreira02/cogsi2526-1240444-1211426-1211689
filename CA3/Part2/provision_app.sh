@@ -64,7 +64,6 @@ After=network.target
 [Service]
 User=vagrant
 WorkingDirectory=${APP_PROJECT_DIR}
-ExecStartPre=/bin/bash -c '/usr/bin/timeout 60 bash -c "until nc -z ${DB_IP} 9092; do sleep 2; done"'
 ExecStart=/usr/bin/java -jar ${APP_JAR}
 Restart=on-failure
 Environment=JAVA_TOOL_OPTIONS=-XX:+UseG1GC
