@@ -2116,6 +2116,112 @@ Para além do *output* acima, que revela que existe uma conexão do utilizador *
 
 Dados estas validações podemos afirmar que a conexão entre VM e *Host* ocorre com sucesso.
 
+## Issue 40 - Automate Workflow with Environment Variables
+
+### Objetivo
+
+Automatizar o processo de provisionamento tornando-o configurável através de variáveis de ambiente. O objetivo é permitir controlar se etapas específicas — clonagem do repositório, build dos projetos e arranque dos serviços — são executadas durante o provisionamento da VM, sem necessidade de editar os ficheiros de provisioning.
+
+### Resumo da solução
+
+Seguiu-se a seguinte abordagem:
+
+1. Definiram-se variáveis de ambiente no `Vagrantfile` (`PROVISION_CLONE_REPO`, `PROVISION_BUILD_PROJECT`, `PROVISION_START_SERVICES`) com valores por defeito que podem ser sobrescritos pelo host.
+2. Essas variáveis são passadas ao script de provisionamento (`provision.sh`) através do bloco `env` do provisioner.
+3. No `provision.sh` as variáveis são lidas com valores por defeito e adicionou-se lógica condicional (if/else) para executar ou saltar cada etapa com base no valor booleano das variáveis.
+
+### Alterações e excertos relevantes
+
+Vagrantfile — passagem das variáveis para o provisioner (excerto):
+
+```ruby
+    clone_repo = ENV.fetch("PROVISION_CLONE_REPO", "true")
+    build_project = ENV.fetch("PROVISION_BUILD_PROJECT", "true")
+    start_services = ENV.fetch("PROVISION_START_SERVICES", "true")
+
+    config.vm.provision "shell", path: "provision.sh", env: {
+                                                "CLONE_REPO" => clone_repo,
+                                                "BUILD_PROJECT" => build_project,
+                                                "START_SERVICES" => start_services
+                                            }
+```
+
+`Vagrantfile` passa as variáveis como strings "true"/"false" que o `provision.sh` converte para booleanos textuais (`true`/`false`).
+
+provision.sh — leitura das variáveis e execução condicional (excerto):
+
+```bash
+CLONE_REPO="${CLONE_REPO:-false}"
+BUILD_PROJECT="${BUILD_PROJECT:-false}"
+START_SERVICES="${START_SERVICES:-false}"
+
+if [ "$CLONE_REPO" = true ]; then
+    echo "[provision] Cloning repository into $REPO_ROOT"
+    git clone https://github.com/... "$REPO_ROOT"
+else
+    echo "[provision] Repository sync skipped."
+fi
+
+if [ "$BUILD_PROJECT" = true ]; then
+    echo "[provision] Building projects..."
+    (cd "$PART1_DIR" && xvfb-run ./gradlew build)
+    (cd "$PART2_DIR" && ./gradlew bootJar)
+else
+    echo "[provision] Project build skipped."
+fi
+
+if [ "$START_SERVICES" = true ]; then
+    echo "[provision] Starting services..."
+    nohup ./gradlew runServer > /vagrant/chat-server.log 2>&1 &
+    nohup ./gradlew bootRun > /vagrant/payroll-app.log 2>&1 &
+else
+    echo "[provision] Service startup skipped."
+fi
+```
+
+### Como testar / exemplos de uso
+
+
+- Executar tudo (defaults do `Vagrantfile`):
+
+```powershell
+vagrant up
+```
+
+- Desativar arranque dos serviços (apenas clone + build):
+
+```powershell
+PROVISION_START_SERVICES=false vagrant up --provision
+```
+
+- Apenas criar VM sem clonar nem construir:
+
+```powershell
+PROVISION_CLONE_REPO=false PROVISION_BUILD_PROJECT=false PROVISION_START_SERVICES=false vagrant up --provision
+```
+
+### Resultados observados (registos)
+
+Os logs gerados na pasta partilhada `/vagrant` permitem validar cada etapa sem abrir sessão na VM.
+
+- `chat-server.log` (exemplo quando o servidor foi arrancado):
+
+```
+> Task :runServer
+The chat server is running...
+```
+
+- `payroll-app.log` (excerto quando a aplicação Spring Boot arranca e carrega dados iniciais):
+
+```
+:: Spring Boot ::                (v3.2.5)
+2025-11-01T20:04:27.557Z  INFO ... : Starting PayrollApplication using Java 17.0.16
+2025-11-01T20:05:17.235Z  INFO ... : Tomcat started on port 8080 (http)
+2025-11-01T20:05:19.182Z  INFO ... : Preloaded Employee{id=1, firstName='Bilbo', lastName='Baggins', role='burglar'}
+```
+
+Mensagens informativas do `provision.sh` confirmam a lógica condicional (ex.: "[provision] Repository sync skipped.", "[provision] Project build skipped.", "[provision] Services started in background.").
+
 ## Issue 42 - Setup de ambiente virtual com duas VMs para executar a aplicação Gradle “Building REST services with Spring”
 
 **Objetivo**: Fornecer um ambiente com duas VMs via Vagrant para simular um cenário real com a aplicação e a base de dados em servidores distintos.
