@@ -17,10 +17,8 @@ Vagrant.configure("2") do |config|
     db.vm.hostname = "ca3-db"
     db.vm.network "private_network", ip: DB_IP
 
-    # Use your custom key instead of insecure one
     db.ssh.private_key_path = "C:/db_ssh"
 
-    # Inject your public key early (before SSH)
     db.vm.provision "shell",
       inline: %{
         mkdir -p /home/vagrant/.ssh
@@ -55,10 +53,8 @@ Vagrant.configure("2") do |config|
     app.vm.network "private_network", ip: APP_IP
     app.vm.network "forwarded_port", guest: 8080, host: 8080, host_ip: "127.0.0.1"
 
-    # Use your custom key
     app.ssh.private_key_path = "C:/app_ssh"
 
-    # Inject your public key early
     app.vm.provision "shell",
       inline: %{
         mkdir -p /home/vagrant/.ssh
