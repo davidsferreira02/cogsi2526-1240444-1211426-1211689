@@ -1,19 +1,14 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# Two-VM environment for CA3 Part 2
-# - db: H2 database in server mode, exposed only to the app VM on port 9092
-# - app: Spring Boot application (Gradle) connecting to db over private network
-
-APP_IP = "192.168.244.167"
-DB_IP  = "192.168.244.166"
+APP_IP = "192.168.244.172"
+DB_IP  = "192.168.244.171"
 
 Vagrant.configure("2") do |config|
-  # Improve security: replace the default insecure key with a unique key per VM
-  config.ssh.insert_key = true
+  # Force use of your custom key
+  config.ssh.insert_key = false
 
-  # Mount the whole repository into /workspace for convenience
-  # Note: the working directory (this Vagrantfile) is also mounted at /vagrant by default
+  # Mount workspace
   config.vm.synced_folder "../..", "/workspace"
 
   # --- DB VM ---
@@ -22,7 +17,21 @@ Vagrant.configure("2") do |config|
     db.vm.hostname = "ca3-db"
     db.vm.network "private_network", ip: DB_IP
 
-    # Minimal resources for H2 server
+    # Use your custom key instead of insecure one
+    db.ssh.private_key_path = "C:/db_ssh"
+
+    # Inject your public key early (before SSH)
+    db.vm.provision "shell",
+      inline: %{
+        mkdir -p /home/vagrant/.ssh
+        echo '#{File.read("C:/db_ssh.pub").strip}' >> /home/vagrant/.ssh/authorized_keys
+        chown -R vagrant:vagrant /home/vagrant/.ssh
+        chmod 700 /home/vagrant/.ssh
+        chmod 600 /home/vagrant/.ssh/authorized_keys
+      },
+      run: "always"
+
+    # Resources
     db.vm.provider :virtualbox do |vb|
       vb.cpus = 1
       vb.memory = 1024
@@ -32,10 +41,9 @@ Vagrant.configure("2") do |config|
       v.vmx["memsize"]  = "1024"
     end
 
-    # Provision DB: installs JDK, H2 server (via jar), systemd unit, and ufw rules
+    # Provision DB setup
     db.vm.provision "shell", path: "provision_db.sh", env: {
       "APP_IP" => APP_IP,
-      # Toggles
       "START_DB" => ENV.fetch("START_DB", "true"),
     }
   end
@@ -45,11 +53,23 @@ Vagrant.configure("2") do |config|
     app.vm.box = "bento/ubuntu-22.04"
     app.vm.hostname = "ca3-app"
     app.vm.network "private_network", ip: APP_IP
-
-    # Forward Spring Boot web port to host
     app.vm.network "forwarded_port", guest: 8080, host: 8080, host_ip: "127.0.0.1"
 
-    # App resources
+    # Use your custom key
+    app.ssh.private_key_path = "C:/app_ssh"
+
+    # Inject your public key early
+    app.vm.provision "shell",
+      inline: %{
+        mkdir -p /home/vagrant/.ssh
+        echo '#{File.read("C:/app_ssh.pub").strip}' >> /home/vagrant/.ssh/authorized_keys
+        chown -R vagrant:vagrant /home/vagrant/.ssh
+        chmod 700 /home/vagrant/.ssh
+        chmod 600 /home/vagrant/.ssh/authorized_keys
+      },
+      run: "always"
+
+    # Resources
     app.vm.provider :virtualbox do |vb|
       vb.cpus = 2
       vb.memory = 2048
@@ -59,13 +79,11 @@ Vagrant.configure("2") do |config|
       v.vmx["memsize"]  = "2048"
     end
 
-    # Provision App: installs toolchain, builds Spring app, waits for DB and starts service
+    # Provision app setup
     app.vm.provision "shell", path: "provision_app.sh", env: {
       "DB_IP" => DB_IP,
-      # Toggles
       "BUILD_APP" => ENV.fetch("BUILD_APP", "true"),
       "START_APP" => ENV.fetch("START_APP", "true"),
-      # Override defaults if your project path differs
       "APP_PROJECT_DIR" => ENV.fetch("APP_PROJECT_DIR", "/workspace/CA2/Part2"),
     }
   end
