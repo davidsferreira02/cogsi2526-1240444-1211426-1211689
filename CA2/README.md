@@ -2586,6 +2586,64 @@ Aliado ao sucesso do *build* executou-se o comando ***vagrant ssh-config***, par
     
     PS C:\Shared\cogsi2526-1240444-1211426-1211689\CA3\Part2>
 
+## Issue 46 - Add a startup check to ensure the app VM waits for the db VM's H2 service to be ready
+
+### Objetivo
+
+Garantir que a VM da aplicação (app) só tenta arrancar o serviço Spring Boot depois da VM da base de dados (db) ter a instância H2 a escutar na porta TCP definida (por defeito 9092). Isto evita falhas de arranque por falta de conectividade ao banco e torna o provisionamento mais robusto.
+
+### Resumo da solução
+Adicionou-se uma verificação activa ao `provision_app.sh` que espera pela disponibilidade da porta do H2 na `DB_IP` antes de prosseguir com a criação/ativação do serviço da aplicação. A verificação é simples, idempotente e imprime mensagens informativas durante a espera.
+
+### Alterações e excertos relevantes
+
+Vagrantfile — passagem de `DB_IP` para o provisioner da app (excerto):
+
+```ruby
+app.vm.provision "shell", path: "provision_app.sh", env: {
+    "DB_IP" => DB_IP,
+    "BUILD_APP" => ENV.fetch("BUILD_APP", "true"),
+    "START_APP" => ENV.fetch("START_APP", "true"),
+}
+```
+
+`provision_app.sh` — loop de espera pela porta do H2 (excerto):
+
+```bash
+echo "[APP] Waiting for H2 server at ${DB_IP}:9092..."
+for i in $(seq 1 60); do
+    if nc -z "${DB_IP}" 9092 2>/dev/null; then
+        echo "[APP] H2 is up."
+        break
+    fi
+    echo "[APP] H2 not ready yet... (${i}/60)"
+    sleep 2
+done
+```
+
+### Como testar / exemplos de uso
+
+- Simular falha da BD a arrancar: levantar apenas a VM `app`
+
+```bash
+vagrant up app
+```
+
+**Resultado:**
+
+```
+app: [APP] H2 not ready yet... (55/60)
+app: [APP] H2 not ready yet... (56/60)
+app: [APP] H2 not ready yet... (57/60)
+app: [APP] H2 not ready yet... (58/60)
+app: [APP] H2 not ready yet... (59/60)
+app: [APP] H2 not ready yet... (60/60)
+```
+
+### Conclusão
+Após a implementação desta solução, a VM da aplicação aguarda de forma eficaz pela disponibilidade do serviço H2 na VM da base de dados antes de tentar iniciar o serviço Spring Boot. Isto melhora a robustez do processo de provisionamento e reduz a probabilidade de falhas relacionadas com a conectividade à base de dados durante o arranque da aplicação.
+
+
 ## Tecnologia Adicional - *Canonical Multipass*
 
 O *Multipass* é uma ferramenta de orquestração de VM's desenvolvida pela *Canonical*, a mesma entidade que desenvolve a distribuição de *Linux* ***Ubuntu***. Esta tecnologia, ao contrário do ***Vagrant***, consegue fazer a gestão de apenas máquinas *Ubuntu*, dado o seu fabricante. 
