@@ -15,11 +15,11 @@ H2_JAR="${H2_DIR}/h2-${H2_VERSION}.jar"
 # --- Add custom SSH key (after Vagrant login succeeds) ---
 if [ -f /vagrant/db_ssh.pub ]; then
   echo "[DB] Adding custom SSH key..."
-  mkdir -p /home/vagrant/.ssh
-  grep -qxF "$(cat /vagrant/db_ssh.pub)" /home/vagrant/.ssh/authorized_keys || cat /vagrant/db_ssh.pub >> /home/vagrant/.ssh/authorized_keys
-  chown -R vagrant:vagrant /home/vagrant/.ssh
-  chmod 700 /home/vagrant/.ssh
-  chmod 600 /home/vagrant/.ssh/authorized_keys
+  sudo mkdir -p /home/vagrant/.ssh
+  sudo grep -qxF "$(cat /vagrant/db_ssh.pub)" /home/vagrant/.ssh/authorized_keys || cat /vagrant/db_ssh.pub >> /home/vagrant/.ssh/authorized_keys
+  sudo chown -R vagrant:vagrant /home/vagrant/.ssh
+  sudo chmod 700 /home/vagrant/.ssh
+  sudo chmod 600 /home/vagrant/.ssh/authorized_keys
 fi
 
 # (Optional) Remove default insecure key after adding yours
