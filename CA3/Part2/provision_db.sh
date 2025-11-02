@@ -4,6 +4,9 @@ set -euo pipefail
 APP_IP=${APP_IP:-192.168.244.170}
 START_DB=${START_DB:-true}
 
+chown vagrant:vagrant /home/vagrant/.ssh/authorized_keys
+chmod 600 /home/vagrant/.ssh/authorized_keys
+
 echo "[DB] Updating packages..."
 sudo apt-get update -y
 sudo apt-get install -y openjdk-17-jre-headless ufw curl unzip

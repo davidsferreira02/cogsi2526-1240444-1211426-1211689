@@ -6,6 +6,9 @@ BUILD_APP=${BUILD_APP:-true}
 START_APP=${START_APP:-true}
 APP_PROJECT_DIR=${APP_PROJECT_DIR:-/workspace/CA2/Part2}
 
+chown vagrant:vagrant /home/vagrant/.ssh/authorized_keys
+chmod 600 /home/vagrant/.ssh/authorized_keys
+
 echo "[APP] Updating packages..."
 sudo apt-get update -y
 sudo apt-get install -y openjdk-17-jdk maven gradle curl jq netcat
