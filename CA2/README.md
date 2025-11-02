@@ -2414,78 +2414,6 @@ Posto isto, podemos observar o *output* destes mesmo comandos de seguida:
 
 Como podemos observar, tanto na máquina com o módulo aplicacional, como no módulo da base de dados os recursos são os definidos previamente.
 
-## Issue 46 - Add a startup check to ensure the app VM waits for the db VM's H2 service to be ready
-
-Objetivo
---------
-Garantir que a VM da aplicação (app) só tenta arrancar o serviço Spring Boot depois da VM da base de dados (db) ter a instância H2 a escutar na porta TCP definida (por defeito 9092). Isto evita falhas de arranque por falta de conectividade ao banco e torna o provisionamento mais robusto.
-
-Resumo da solução
------------------
-Adicionou-se uma verificação activa ao `provision_app.sh` que espera pela disponibilidade da porta do H2 na `DB_IP` antes de prosseguir com a criação/ativação do serviço da aplicação. A verificação é simples, idempotente e imprime mensagens informativas durante a espera.
-
-Alterações e excertos relevantes
---------------------------------
-
-Vagrantfile — passagem de `DB_IP` para o provisioner da app (excerto):
-
-```ruby
-app.vm.provision "shell", path: "provision_app.sh", env: {
-    "DB_IP" => DB_IP,
-    "BUILD_APP" => ENV.fetch("BUILD_APP", "true"),
-    "START_APP" => ENV.fetch("START_APP", "true"),
-}
-```
-
-`provision_app.sh` — loop de espera pela porta do H2 (excerto):
-
-```bash
-echo "[APP] Waiting for H2 server at ${DB_IP}:9092..."
-for i in $(seq 1 60); do
-    if nc -z "${DB_IP}" 9092 2>/dev/null; then
-        echo "[APP] H2 is up."
-        break
-    fi
-    echo "[APP] H2 not ready yet... (${i}/60)"
-    sleep 2
-done
-```
-
-Como testar / exemplos de uso
-----------------------------
-
-- Cenário normal (DB e APP a arrancar via Vagrant):
-
-```powershell
-vagrant up db
-vagrant up app
-```
-
-- Simular DB lenta a arrancar: levantar apenas a VM `app` com `START_APP=false` e iniciar o H2 mais tarde na VM `db`.
-
-Validação e resultados observados
---------------------------------
-
-- Mensagens de provisionamento (exemplo):
-
-```
-[APP] Waiting for H2 server at 192.168.244.171:9092...
-[APP] H2 not ready yet... (1/60)
-[APP] H2 not ready yet... (2/60)
-...
-[APP] H2 is up.
-[APP] Starting application service...
-```
-
-- No caso bem-sucedido, o `payroll-app.log` mostra o arranque do Spring Boot (excerto):
-
-```
-:: Spring Boot ::
-2025-11-01T20:04:27.557Z  INFO ... : Starting PayrollApplication using Java 17.0.16
-2025-11-01T20:05:17.235Z  INFO ... : Tomcat started on port 8080 (http)
-```
-
-
 ## Issue 45 - Ensure that you use custom SSH keys for a secure access 
 
 Para alterarmos as chaves de SSH *default* do *Vagrant* é necessário proceder aos seguintes passos:
@@ -2659,3 +2587,58 @@ Aliado ao sucesso do *build* executou-se o comando ***vagrant ssh-config***, par
     PS C:\Shared\cogsi2526-1240444-1211426-1211689\CA3\Part2>
 
 ## Issue 46 - Add a startup check to ensure the app VM waits for the db VM's H2 service to be ready
+
+### Objetivo
+
+Garantir que a VM da aplicação (app) só tenta arrancar o serviço Spring Boot depois da VM da base de dados (db) ter a instância H2 a escutar na porta TCP definida (por defeito 9092). Isto evita falhas de arranque por falta de conectividade ao banco e torna o provisionamento mais robusto.
+
+### Resumo da solução
+Adicionou-se uma verificação activa ao `provision_app.sh` que espera pela disponibilidade da porta do H2 na `DB_IP` antes de prosseguir com a criação/ativação do serviço da aplicação. A verificação é simples, idempotente e imprime mensagens informativas durante a espera.
+
+### Alterações e excertos relevantes
+
+Vagrantfile — passagem de `DB_IP` para o provisioner da app (excerto):
+
+```ruby
+app.vm.provision "shell", path: "provision_app.sh", env: {
+    "DB_IP" => DB_IP,
+    "BUILD_APP" => ENV.fetch("BUILD_APP", "true"),
+    "START_APP" => ENV.fetch("START_APP", "true"),
+}
+```
+
+`provision_app.sh` — loop de espera pela porta do H2 (excerto):
+
+```bash
+echo "[APP] Waiting for H2 server at ${DB_IP}:9092..."
+for i in $(seq 1 60); do
+    if nc -z "${DB_IP}" 9092 2>/dev/null; then
+        echo "[APP] H2 is up."
+        break
+    fi
+    echo "[APP] H2 not ready yet... (${i}/60)"
+    sleep 2
+done
+```
+
+### Como testar / exemplos de uso
+
+- Simular falha da BD a arrancar: levantar apenas a VM `app`
+
+```bash
+vagrant up app
+```
+
+**Resultado:**
+
+```
+app: [APP] H2 not ready yet... (55/60)
+app: [APP] H2 not ready yet... (56/60)
+app: [APP] H2 not ready yet... (57/60)
+app: [APP] H2 not ready yet... (58/60)
+app: [APP] H2 not ready yet... (59/60)
+app: [APP] H2 not ready yet... (60/60)
+```
+
+### Conclusão
+Após a implementação desta solução, a VM da aplicação aguarda de forma eficaz pela disponibilidade do serviço H2 na VM da base de dados antes de tentar iniciar o serviço Spring Boot. Isto melhora a robustez do processo de provisionamento e reduz a probabilidade de falhas relacionadas com a conectividade à base de dados durante o arranque da aplicação.
