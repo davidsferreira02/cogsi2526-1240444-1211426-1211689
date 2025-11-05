@@ -1,83 +1,91 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DB_IP=${DB_IP:-192.168.244.171}
-BUILD_APP=${BUILD_APP:-true}
-START_APP=${START_APP:-true}
-APP_PROJECT_DIR=${APP_PROJECT_DIR:-/workspace/CA2/Part2}
+APP_HOST=${APP_HOST:-ca3-app.cogsi}
+START_DB=${START_DB:-true}
 
-echo "[APP] Updating packages..."
+echo "[DB] Updating packages..."
 sudo apt-get update -y
-sudo apt-get install -y openjdk-17-jdk maven gradle curl jq netcat
+sudo apt-get install -y openjdk-17-jre-headless ufw curl unzip dnsutils
 
-# Ensure app properties point to H2 server mode
-APP_RESOURCES_DIR="${APP_PROJECT_DIR}/app/src/main/resources"
-APP_PROPS="${APP_RESOURCES_DIR}/application.properties"
+H2_VERSION="2.3.232"
+H2_DIR="/opt/h2"
+H2_JAR="${H2_DIR}/h2-${H2_VERSION}.jar"
 
-if [ -f "$APP_PROPS" ]; then
-  echo "[APP] Configuring application.properties to use H2 server at ${DB_IP}:9092"
-  sudo sed -i \
-    -e "s|^spring.datasource.url=.*|spring.datasource.url=jdbc:h2:tcp://${DB_IP}:9092/./payrolldb|" \
-    -e "s|^spring.datasource.driverClassName=.*|spring.datasource.driverClassName=org.h2.Driver|" \
-    -e "s|^spring.datasource.username=.*|spring.datasource.username=sa|" \
-    -e "s|^spring.datasource.password=.*|spring.datasource.password=password|" \
-    -e "s|^spring.jpa.hibernate.ddl-auto=.*|spring.jpa.hibernate.ddl-auto=update|" \
-    "$APP_PROPS"
-else
-  echo "[APP][WARN] application.properties not found at ${APP_PROPS}. Skipping DB URL update."
+if [ ! -f "$H2_JAR" ]; then
+  echo "[DB] Installing H2 ${H2_VERSION}..."
+  sudo mkdir -p "$H2_DIR"
+  sudo curl -fsSL -o "$H2_JAR" "https://repo1.maven.org/maven2/com/h2database/h2/${H2_VERSION}/h2-${H2_VERSION}.jar"
+  sudo chmod 0644 "$H2_JAR"
 fi
 
-if [ "${BUILD_APP}" = "true" ]; then
-  echo "[APP] Building Spring Boot application..."
-  pushd "$APP_PROJECT_DIR" >/dev/null
-  ./gradlew bootJar
-  popd >/dev/null
-else
-  echo "[APP] Skipping build due to BUILD_APP=${BUILD_APP}"
-fi
+sudo mkdir -p /data/h2
+sudo chown vagrant:vagrant /data/h2
 
-# Wait for H2 server readiness
-echo "[APP] Waiting for H2 server at ${DB_IP}:9092..."
-for i in $(seq 1 60); do
-  if nc -z "${DB_IP}" 9092 2>/dev/null; then
-    echo "[APP] H2 is up."
-    break
-  fi
-  echo "[APP] H2 not ready yet... (${i}/60)"
-  sleep 2
-done
+SQL_FILE="/tmp/init_payrolldb.sql"
+cat > "${SQL_FILE}" <<'SQL'
+-- minimal init: create a marker table so H2 creates the DB files
+CREATE TABLE IF NOT EXISTS payroll_init (
+  id INT PRIMARY KEY,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+);
+SQL
 
-# Create a systemd service to run the Spring Boot app
-# Use deterministic jar name produced by Gradle bootJar configuration
-APP_JAR="${APP_PROJECT_DIR}/app/build/libs/app.jar"
-if [ ! -f "$APP_JAR" ]; then
-  echo "[APP][ERROR] Expected Spring Boot jar not found at ${APP_JAR}. Aborting service creation."
-  ls -l "${APP_PROJECT_DIR}/app/build/libs" || true
-  exit 1
-fi
+# Run as vagrant so files are owned correctly; use the local (filesystem) JDBC URL to create files under /data/h2
+sudo -u vagrant /usr/bin/java -cp "${H2_JAR}" org.h2.tools.RunScript \
+  -url "jdbc:h2:/data/h2/payrolldb" -user sa -password password -script "${SQL_FILE}" || true
+rm -f "${SQL_FILE}"
 
-sudo tee /etc/systemd/system/ca3-app.service >/dev/null <<SERVICE
+# Create systemd service for H2 server mode
+cat << SERVICE | sudo tee /etc/systemd/system/h2.service >/dev/null
 [Unit]
-Description=CA3 Spring Boot App
+Description=H2 Database Server
 After=network.target
 
 [Service]
 User=vagrant
-WorkingDirectory=${APP_PROJECT_DIR}
-ExecStart=/usr/bin/java -jar ${APP_JAR}
+ExecStart=/usr/bin/java -cp ${H2_JAR} org.h2.tools.Server -tcp -tcpAllowOthers -tcpPort 9092 -baseDir /data/h2
 Restart=on-failure
-Environment=JAVA_TOOL_OPTIONS=-XX:+UseG1GC
 
 [Install]
 WantedBy=multi-user.target
 SERVICE
 
-sudo systemctl daemon-reload
-if [ "${START_APP}" = "true" ]; then
-  echo "[APP] Starting application service..."
-  sudo systemctl enable --now ca3-app
-else
-  echo "[APP] Skipping app start due to START_APP=${START_APP}"
+# --- Resolve the App hostname to IP ---
+echo "[DB] Resolving app hostname: ${APP_HOST}"
+for i in {1..10}; do
+  APP_IP=$(getent ahostsv4 "${APP_HOST}" | awk '{print $1; exit}') || true
+  if [[ -n "${APP_IP}" ]]; then
+    echo "[DB] Resolved ${APP_HOST} -> ${APP_IP}"
+    break
+  fi
+  echo "[DB] Waiting for ${APP_HOST} DNS entry..."
+  sleep 2
+done
+
+if [[ -z "${APP_IP:-}" ]]; then
+  echo "[DB][WARN] Could not resolve ${APP_HOST}, opening H2 port on private network interface instead."
+  PRIV_IF=$(ip -o -4 addr show | awk '$2!="lo" && $4!~/^10\.0\.2\./ {print $2; exit}')
 fi
 
-echo "[APP] Done. App should be reachable on host at http://localhost:8080"
+echo "[DB] Enabling firewall..."
+sudo ufw --force enable
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow OpenSSH
+
+if [[ -n "${APP_IP:-}" ]]; then
+  sudo ufw allow from "${APP_IP}" to any port 9092 proto tcp
+else
+  sudo ufw allow in on "${PRIV_IF}" to any port 9092 proto tcp
+fi
+
+sudo systemctl daemon-reload
+if [ "${START_DB}" = "true" ]; then
+  echo "[DB] Starting H2 service..."
+  sudo systemctl enable --now h2
+else
+  echo "[DB] Skipping H2 service start due to START_DB=${START_DB}"
+fi
+
+echo "[DB] Done. H2 should be reachable from ${APP_HOST} (${APP_IP:-unknown}):9092 only."
