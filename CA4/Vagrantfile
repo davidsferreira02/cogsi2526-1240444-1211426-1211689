@@ -1,27 +1,27 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-#APP_IP = "192.168.244.172"
-#DB_IP  = "192.168.244.171"
-
 Vagrant.configure("2") do |config|
   config.ssh.insert_key = false
   config.vm.synced_folder "../..", "/workspace"
   config.dns.tld = "cogsi"
-  config.vm.hostname = "host"
+
+  # Shared SSH key locations
+  DB_KEY_PATH  = "C:/db_ssh"
+  APP_KEY_PATH = "C:/app_ssh"
 
   # --- DB VM ---
   config.vm.define "db" do |db|
     db.vm.box = "bento/ubuntu-22.04"
-    db.vm.hostname = "ca3-db"
-    db.vm.network "private_network", ip: "dhcp"
+    db.vm.hostname = "ca3-db.cogsi"
+    db.vm.network "private_network", type: "dhcp"
 
-    db.ssh.private_key_path = "C:/db_ssh"
+    db.ssh.private_key_path = DB_KEY_PATH
 
     db.vm.provision "shell",
       inline: %{
         mkdir -p /home/vagrant/.ssh
-        echo '#{File.read("C:/db_ssh.pub").strip}' >> /home/vagrant/.ssh/authorized_keys
+        echo '#{File.read("#{DB_KEY_PATH}.pub").strip}' >> /home/vagrant/.ssh/authorized_keys
         chown -R vagrant:vagrant /home/vagrant/.ssh
         chmod 700 /home/vagrant/.ssh
         chmod 600 /home/vagrant/.ssh/authorized_keys
@@ -38,7 +38,6 @@ Vagrant.configure("2") do |config|
     end
 
     db.vm.provision "shell", path: "provision_db.sh", env: {
-      "APP_IP" => APP_IP,
       "START_DB" => ENV.fetch("START_DB", "true"),
     }
   end
@@ -46,16 +45,16 @@ Vagrant.configure("2") do |config|
   # --- APP VM ---
   config.vm.define "app" do |app|
     app.vm.box = "bento/ubuntu-22.04"
-    app.vm.hostname = "ca3-app"
-    app.vm.network "private_network", ip: "dhcp"
+    app.vm.hostname = "ca3-app.cogsi"
+    app.vm.network "private_network", type: "dhcp"
     app.vm.network "forwarded_port", guest: 8080, host: 8080, host_ip: "127.0.0.1"
 
-	  app.ssh.private_key_path = "C:/app_ssh"
+    app.ssh.private_key_path = APP_KEY_PATH
 
     app.vm.provision "shell",
       inline: %{
         mkdir -p /home/vagrant/.ssh
-        echo '#{File.read("C:/app_ssh.pub").strip}' >> /home/vagrant/.ssh/authorized_keys
+        echo '#{File.read("#{APP_KEY_PATH}.pub").strip}' >> /home/vagrant/.ssh/authorized_keys
         chown -R vagrant:vagrant /home/vagrant/.ssh
         chmod 700 /home/vagrant/.ssh
         chmod 600 /home/vagrant/.ssh/authorized_keys
@@ -72,7 +71,7 @@ Vagrant.configure("2") do |config|
     end
 
     app.vm.provision "shell", path: "provision_app.sh", env: {
-      "DB_IP" => DB_IP,
+      "DB_HOST" => "ca3-db.cogsi",
       "BUILD_APP" => ENV.fetch("BUILD_APP", "true"),
       "START_APP" => ENV.fetch("START_APP", "true"),
       "APP_PROJECT_DIR" => ENV.fetch("APP_PROJECT_DIR", "/workspace/CA2/Part2"),
