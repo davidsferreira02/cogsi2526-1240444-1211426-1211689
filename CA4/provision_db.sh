@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_IP=${APP_IP:-ca3-db.cogsi}
+APP_HOST=${APP_HOST:-ca3-app.cogsi}
 START_DB=${START_DB:-true}
 
 echo "[DB] Updating packages..."
 sudo apt-get update -y
-sudo apt-get install -y openjdk-17-jre-headless ufw curl unzip
+sudo apt-get install -y openjdk-17-jre-headless ufw curl unzip dnsutils
 
 H2_VERSION="2.3.232"
 H2_DIR="/opt/h2"
@@ -37,7 +37,7 @@ sudo -u vagrant /usr/bin/java -cp "${H2_JAR}" org.h2.tools.RunScript \
 rm -f "${SQL_FILE}"
 
 # Create systemd service for H2 server mode
-cat << 'SERVICE' | sudo tee /etc/systemd/system/h2.service >/dev/null
+cat << SERVICE | sudo tee /etc/systemd/system/h2.service >/dev/null
 [Unit]
 Description=H2 Database Server
 After=network.target
@@ -51,13 +51,34 @@ Restart=on-failure
 WantedBy=multi-user.target
 SERVICE
 
+# --- Resolve the App hostname to IP ---
+echo "[DB] Resolving app hostname: ${APP_HOST}"
+for i in {1..10}; do
+  APP_IP=$(getent ahostsv4 "${APP_HOST}" | awk '{print $1; exit}') || true
+  if [[ -n "${APP_IP}" ]]; then
+    echo "[DB] Resolved ${APP_HOST} -> ${APP_IP}"
+    break
+  fi
+  echo "[DB] Waiting for ${APP_HOST} DNS entry..."
+  sleep 2
+done
+
+if [[ -z "${APP_IP:-}" ]]; then
+  echo "[DB][WARN] Could not resolve ${APP_HOST}, opening H2 port on private network interface instead."
+  PRIV_IF=$(ip -o -4 addr show | awk '$2!="lo" && $4!~/^10\.0\.2\./ {print $2; exit}')
+fi
+
 echo "[DB] Enabling firewall..."
 sudo ufw --force enable
 sudo ufw default deny incoming
-# Keep SSH accessible for Vagrant
+sudo ufw default allow outgoing
 sudo ufw allow OpenSSH
-# Restrict H2 port to app VM only
-sudo ufw allow from "${APP_IP}" to any port 9092 proto tcp
+
+if [[ -n "${APP_IP:-}" ]]; then
+  sudo ufw allow from "${APP_IP}" to any port 9092 proto tcp
+else
+  sudo ufw allow in on "${PRIV_IF}" to any port 9092 proto tcp
+fi
 
 sudo systemctl daemon-reload
 if [ "${START_DB}" = "true" ]; then
@@ -67,4 +88,4 @@ else
   echo "[DB] Skipping H2 service start due to START_DB=${START_DB}"
 fi
 
-echo "[DB] Done. H2 should be reachable from ${APP_IP}:9092 only."
+echo "[DB] Done. H2 should be reachable from ${APP_HOST} (${APP_IP:-unknown}):9092 only."
