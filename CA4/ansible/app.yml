@@ -9,5 +9,34 @@
     app_project_dir: "{{ app_project_dir | default('/workspace/CA2/Part2') }}"
     build_app: "{{ build_app | default('true') }}"
     start_app: "{{ start_app | default('true') }}"
+    app_port: "{{ app_port | default('8080') }}"
   roles:
     - spring_app
+
+  post_tasks:
+    - name: Wait for application TCP port to open
+      wait_for:
+        host: 127.0.0.1
+        port: "{{ app_port | int }}"
+        delay: 2
+        timeout: 120
+        state: started
+      when: start_app | bool
+
+    - name: HTTP health check (root endpoint)
+      uri:
+        url: "http://localhost:{{ app_port }}/"
+        method: GET
+        status_code: 200
+        return_content: yes
+        validate_certs: no
+      register: app_health_response
+      retries: 10
+      delay: 3
+      until: app_health_response.status == 200
+      when: start_app | bool
+
+    - name: Show snippet of application response body (for debugging)
+      debug:
+        msg: "App responded with status {{ app_health_response.status }} and first 120 chars: {{ app_health_response.content | default('') | truncate(120, True) }}"
+      when: start_app | bool

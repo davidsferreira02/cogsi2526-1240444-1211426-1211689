@@ -10,3 +10,18 @@
     start_db: "{{ start_db | default('true') }}"
   roles:
     - h2_db
+
+  post_tasks:
+    - name: Wait for H2 database TCP port to be listening
+      wait_for:
+        host: 127.0.0.1
+        port: 9092
+        delay: 2
+        timeout: 60
+        state: started
+      when: start_db | bool
+    
+    - name: Confirm H2 port 9092 is open
+      debug:
+        msg: "H2 TCP port 9092 is open and accepting connections on localhost"
+      when: start_db | bool
