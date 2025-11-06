@@ -68,3 +68,26 @@ vagrant ssh db
 ```bash
 vagrant ssh app
 ```
+
+## Issue #53 — Health-check dos serviços
+
+Para garantir que cada serviço está corretamente a correr após o aprovisionamento, foram adicionadas tarefas de health-check nos playbooks Ansible:
+
+### O que foi implementado
+
+- Host1 (app) — `ansible/app.yml`
+  - Nova variável `app_port` com default `8080`.
+  - `post_tasks` que:
+    - Esperam que a porta TCP `{{ app_port }}` esteja a ouvir (`wait_for`, `state: started`).
+    - Efetuam um pedido HTTP a `http://localhost:{{ app_port }}/` com o módulo `uri`, validando resposta `200 OK` com retries e backoff.
+    - Mostram um excerto da resposta (útil para diagnóstico rápido) via `debug`.
+
+- Host2 (db) — `ansible/db.yml`
+  - `post_tasks` que:
+    - Esperam que a porta TCP `9092` (H2 Server) esteja a ouvir (`wait_for`, `state: started`).
+    - Confirmam via `debug` que a porta está aberta.
+
+Estas verificações falham o playbook se a aplicação web não responder com `200` ou se o socket da BD não abrir, permitindo detetar problemas cedo.
+
+
+
