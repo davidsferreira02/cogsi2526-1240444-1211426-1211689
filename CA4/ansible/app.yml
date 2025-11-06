@@ -1,0 +1,13 @@
+---
+- name: Provision Spring REST app on host1
+  hosts: all
+  connection: local
+  gather_facts: yes
+  become: true
+  vars:
+    db_ip: "{{ db_ip | default('192.168.244.171') }}"
+    app_project_dir: "{{ app_project_dir | default('/workspace/CA2/Part2') }}"
+    build_app: "{{ build_app | default('true') }}"
+    start_app: "{{ start_app | default('true') }}"
+  roles:
+    - spring_app

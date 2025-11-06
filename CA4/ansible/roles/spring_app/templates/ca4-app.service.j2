@@ -1,0 +1,13 @@
+[Unit]
+Description=CA4 Spring Boot App
+After=network.target
+
+[Service]
+User=vagrant
+WorkingDirectory={{ working_dir }}
+ExecStart=/usr/bin/java -jar {{ app_jar_path }}
+Restart=on-failure
+Environment=JAVA_TOOL_OPTIONS=-XX:+UseG1GC
+
+[Install]
+WantedBy=multi-user.target

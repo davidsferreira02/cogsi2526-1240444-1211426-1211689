@@ -1,0 +1,127 @@
+---
+- name: Update apt cache and install packages for app
+  apt:
+    update_cache: yes
+    name:
+      - openjdk-17-jdk
+      - maven
+      - gradle
+      - curl
+      - jq
+      - netcat-openbsd
+    state: present
+
+- name: Check if application.properties exists
+  stat:
+    path: "{{ app_project_dir }}/app/src/main/resources/application.properties"
+  register: app_props
+
+- name: Configure datasource URL to H2 server
+  lineinfile:
+    path: "{{ app_project_dir }}/app/src/main/resources/application.properties"
+    regexp: '^spring.datasource.url='
+    line: "spring.datasource.url=jdbc:h2:tcp://{{ db_ip }}:9092/./payrolldb"
+    create: yes
+  when: app_props.stat.exists
+
+- name: Configure H2 driver
+  lineinfile:
+    path: "{{ app_project_dir }}/app/src/main/resources/application.properties"
+    regexp: '^spring.datasource.driverClassName='
+    line: 'spring.datasource.driverClassName=org.h2.Driver'
+    create: yes
+  when: app_props.stat.exists
+
+- name: Configure DB user
+  lineinfile:
+    path: "{{ app_project_dir }}/app/src/main/resources/application.properties"
+    regexp: '^spring.datasource.username='
+    line: 'spring.datasource.username=sa'
+    create: yes
+  when: app_props.stat.exists
+
+- name: Configure DB password
+  lineinfile:
+    path: "{{ app_project_dir }}/app/src/main/resources/application.properties"
+    regexp: '^spring.datasource.password='
+    line: 'spring.datasource.password=password'
+    create: yes
+  when: app_props.stat.exists
+
+- name: Configure JPA DDL auto update
+  lineinfile:
+    path: "{{ app_project_dir }}/app/src/main/resources/application.properties"
+    regexp: '^spring.jpa.hibernate.ddl-auto='
+    line: 'spring.jpa.hibernate.ddl-auto=update'
+    create: yes
+  when: app_props.stat.exists
+
+- name: Build Spring Boot application (bootJar)
+  command: ./gradlew bootJar
+  args:
+    chdir: "{{ app_project_dir }}"
+  when: build_app | bool
+
+- name: Wait for H2 to be ready on DB host
+  wait_for:
+    host: "{{ db_ip }}"
+    port: 9092
+    delay: 1
+    timeout: 120
+
+- name: Find built JARs under the project recursively
+  find:
+    paths: "{{ app_project_dir }}"
+    patterns: "*.jar"
+    recurse: yes
+  register: found_jars
+
+- name: Narrow candidates to app/build/libs
+  set_fact:
+    app_jars_in_libs: "{{ found_jars.files | selectattr('path','search','/app/build/libs/') | list }}"
+
+- name: Prefer non-plain Spring Boot JARs (by newest mtime)
+  set_fact:
+    app_jar: >-
+      {{
+        (
+          (app_jars_in_libs | rejectattr('path','search','-plain') | sort(attribute='mtime'))
+          | last
+        ).path
+        if ((app_jars_in_libs | rejectattr('path','search','-plain')) | length) > 0
+        else (
+          (app_jars_in_libs | sort(attribute='mtime')) | last
+        ).path if (app_jars_in_libs | length) > 0 else ''
+      }}
+
+- name: Fail if no boot jar found
+  fail:
+    msg: "No Spring Boot jar found under {{ app_project_dir }}/app/build/libs (looked recursively)."
+  when: app_jar | length == 0
+
+- name: Install systemd unit for CA4 app
+  template:
+    src: ca4-app.service.j2
+    dest: /etc/systemd/system/ca4-app.service
+    mode: '0644'
+  vars:
+    app_jar_path: "{{ app_jar }}"
+    working_dir: "{{ app_project_dir }}"
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: Ensure CA4 app service is enabled and started
+  systemd:
+    name: ca4-app
+    enabled: yes
+    state: started
+  when: start_app | bool
+
+- name: Ensure CA4 app service is disabled and stopped when requested
+  systemd:
+    name: ca4-app
+    enabled: no
+    state: stopped
+  when: not (start_app | bool)

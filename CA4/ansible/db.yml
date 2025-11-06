@@ -1,0 +1,12 @@
+---
+- name: Provision H2 database on host2
+  hosts: all
+  connection: local
+  gather_facts: yes
+  become: true
+  vars:
+    app_ip: "{{ app_ip | default('192.168.244.172') }}"
+    h2_version: "{{ h2_version | default('2.3.232') }}"
+    start_db: "{{ start_db | default('true') }}"
+  roles:
+    - h2_db

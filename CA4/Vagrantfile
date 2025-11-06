@@ -1,0 +1,73 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+APP_IP = ENV.fetch("APP_IP", "192.168.244.172")
+DB_IP  = ENV.fetch("DB_IP",  "192.168.244.171")
+
+Vagrant.configure("2") do |config|
+  # Let Vagrant manage SSH keys (portable across OSes)
+  config.ssh.insert_key = true
+
+  # Mount repository workspace inside the VMs
+  config.vm.synced_folder "../..", "/workspace"
+
+  # --- DB VM ---
+  config.vm.define "db" do |db|
+    db.vm.box = "bento/ubuntu-22.04"
+    db.vm.hostname = "ca4-db"
+    db.vm.network "private_network", ip: DB_IP
+
+    db.vm.provider :virtualbox do |vb|
+      vb.cpus = 1
+      vb.memory = 1024
+    end
+    db.vm.provider :vmware_desktop do |v|
+      v.vmx["numvcpus"] = "1"
+      v.vmx["memsize"]  = "1024"
+    end
+
+    # Use Ansible (inside the guest) to provision H2
+    db.vm.provision "ansible_local" do |ansible|
+      ansible.playbook = "ansible/db.yml"
+      ansible.become = true
+      ansible.install = true
+      ansible.compatibility_mode = "2.0"
+      ansible.extra_vars = {
+        app_ip: APP_IP,
+        h2_version: ENV.fetch("H2_VERSION", "2.3.232"),
+        start_db: ENV.fetch("START_DB", "true"),
+      }
+    end
+  end
+
+  # --- APP VM ---
+  config.vm.define "app" do |app|
+    app.vm.box = "bento/ubuntu-22.04"
+    app.vm.hostname = "ca4-app"
+    app.vm.network "private_network", ip: APP_IP
+    app.vm.network "forwarded_port", guest: 8080, host: 8080, host_ip: "127.0.0.1"
+
+    app.vm.provider :virtualbox do |vb|
+      vb.cpus = 2
+      vb.memory = 2048
+    end
+    app.vm.provider :vmware_desktop do |v|
+      v.vmx["numvcpus"] = "2"
+      v.vmx["memsize"]  = "2048"
+    end
+
+    # Use Ansible (inside the guest) to provision the Spring app
+    app.vm.provision "ansible_local" do |ansible|
+      ansible.playbook = "ansible/app.yml"
+      ansible.become = true
+      ansible.install = true
+      ansible.compatibility_mode = "2.0"
+      ansible.extra_vars = {
+        db_ip: DB_IP,
+        app_project_dir: ENV.fetch("APP_PROJECT_DIR", "/workspace/CA2/Part2"),
+        build_app: ENV.fetch("BUILD_APP", "true"),
+        start_app: ENV.fetch("START_APP", "true"),
+      }
+    end
+  end
+end

@@ -1,0 +1,95 @@
+---
+- name: Update apt cache and install packages for H2
+  apt:
+    update_cache: yes
+    name:
+      - openjdk-17-jre-headless
+      - ufw
+      - curl
+      - unzip
+    state: present
+
+- name: Ensure H2 directory exists
+  file:
+    path: /opt/h2
+    state: directory
+    mode: '0755'
+
+- name: Download H2 jar
+  get_url:
+    url: "https://repo1.maven.org/maven2/com/h2database/h2/{{ h2_version }}/h2-{{ h2_version }}.jar"
+    dest: "/opt/h2/h2-{{ h2_version }}.jar"
+    mode: '0644'
+
+- name: Ensure H2 data directory exists and owned by vagrant
+  file:
+    path: /data/h2
+    state: directory
+    owner: vagrant
+    group: vagrant
+    mode: '0755'
+
+- name: Check if H2 database already initialized (.mv.db)
+  stat:
+    path: /data/h2/payrolldb.mv.db
+  register: h2_db_mv
+
+- name: Check if H2 database already initialized (.h2.db)
+  stat:
+    path: /data/h2/payrolldb.h2.db
+  register: h2_db_legacy
+
+- name: Create init SQL script
+  copy:
+    dest: /tmp/init_payrolldb.sql
+    content: |
+      -- minimal init: create a marker table so H2 creates the DB files
+      CREATE TABLE IF NOT EXISTS payroll_init (
+        id INT PRIMARY KEY,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+      );
+    mode: '0644'
+  when: not h2_db_mv.stat.exists and not h2_db_legacy.stat.exists
+
+- name: Initialize H2 database files if missing
+  command: >-
+    /usr/bin/java -cp "/opt/h2/h2-{{ h2_version }}.jar" org.h2.tools.RunScript
+    -url "jdbc:h2:/data/h2/payrolldb" -user sa -password password -script "/tmp/init_payrolldb.sql"
+  become_user: vagrant
+  when: not h2_db_mv.stat.exists and not h2_db_legacy.stat.exists
+
+- name: Remove init SQL script
+  file:
+    path: /tmp/init_payrolldb.sql
+    state: absent
+
+- name: Install systemd unit for H2
+  template:
+    src: h2.service.j2
+    dest: /etc/systemd/system/h2.service
+    mode: '0644'
+
+- name: Enable UFW and set defaults
+  shell: |
+    ufw --force enable
+    ufw default deny incoming
+    ufw allow OpenSSH
+    ufw allow from {{ app_ip }} to any port 9092 proto tcp
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: Ensure H2 service is enabled and started
+  systemd:
+    name: h2
+    enabled: yes
+    state: started
+  when: start_db | bool
+
+- name: Ensure H2 service is disabled and stopped when requested
+  systemd:
+    name: h2
+    enabled: no
+    state: stopped
+  when: not (start_db | bool)
