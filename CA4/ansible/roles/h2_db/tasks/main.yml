@@ -20,6 +20,10 @@
     url: "https://repo1.maven.org/maven2/com/h2database/h2/{{ h2_version }}/h2-{{ h2_version }}.jar"
     dest: "/opt/h2/h2-{{ h2_version }}.jar"
     mode: '0644'
+  register: h2_jar_download
+  until: h2_jar_download is succeeded
+  retries: 3
+  delay: 5
 
 - name: Ensure H2 data directory exists and owned by vagrant
   file:
@@ -69,12 +73,25 @@
     dest: /etc/systemd/system/h2.service
     mode: '0644'
 
-- name: Enable UFW and set defaults
-  shell: |
-    ufw --force enable
-    ufw default deny incoming
-    ufw allow OpenSSH
-    ufw allow from {{ app_ip }} to any port 9092 proto tcp
+- name: Ensure UFW is enabled with default deny incoming
+  ufw:
+    state: enabled
+    direction: incoming
+    policy: deny
+
+- name: Ensure OpenSSH is allowed through UFW
+  ufw:
+    rule: allow
+    name: OpenSSH
+    comment: "Allow SSH access"
+
+- name: Allow app server access to H2 port
+  ufw:
+    rule: allow
+    proto: tcp
+    from_ip: "{{ app_ip }}"
+    to_port: 9092
+    comment: "Allow app to connect to H2"
 
 - name: Reload systemd
   systemd:

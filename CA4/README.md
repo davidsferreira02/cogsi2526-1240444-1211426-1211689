@@ -68,6 +68,89 @@ vagrant ssh db
 ```bash
 vagrant ssh app
 ```
+## Issue #49 — Ensure that your playbooks are idempotent
+
+A idempotência, em ***Ansible***, é alcançada através da remoção da necessidade de gastar recursos computacionais em operaçãos que são repetidas sempre que o *provision* das máquinas é realizado. Podemos alcançar o objetivo utilizando funções *built'in*, colocadas nos ficheiros *.yml* com todo o processo de *provision*.
+
+Posto isto, as seguintes alterações foram feitas aos ficheiros *.xml*: 
+
+1. **DB**
+
+- Foi utilizada a função ***state: present*** para garantir que determinados pacotes não são instalados novamente:
+
+      name: Update apt cache and install packages for H2
+      apt:
+        update_cache: yes
+        name:
+          - openjdk-17-jre-headless
+          - ufw
+          - curl
+          - unzip
+        state: present
+  
+- A função ***register*** foi usada também para guardar o resultado de uma determinada tarefa e depois utilizar o mesmo para validações. Juntamente com esta função foi utilizada a função ***until***. Esta serve para repetir uma tarefa até que a mesma seja bem sucedida.
+
+      name: Download H2 jar
+      get_url:
+        url: "https://repo1.maven.org/maven2/com/h2database/h2/{{ h2_version }}/h2-{{ h2_version }}.jar"
+        dest: "/opt/h2/h2-{{ h2_version }}.jar"
+        mode: '0644'
+      register: h2_jar_download
+      until: h2_jar_download is succeeded
+      retries: 3
+      delay: 5
+
+Como é possível observar no método mostrado anteriormente, foram ainda usadas as funções ***retries*** e ***delay***, que, respetivamente, limitam as tentativas da execução da tarefa, em caso de falha, e o tempo entre as mesmas.
+
+É também usado a função ***when***, esta tem como objetivo realizar a tarefa definida apenas quando uma condição se validar. Na nossa solução, esta é amplamente utilizada em conjunto com a função ***register***, já descrita.
+
+      name: Initialize H2 database files if missing
+        command: >-
+          /usr/bin/java -cp "/opt/h2/h2-{{ h2_version }}.jar" org.h2.tools.RunScript
+          -url "jdbc:h2:/data/h2/payrolldb" -user sa -password password -script "/tmp/init_payrolldb.sql"
+        become_user: vagrant
+        when: not h2_db_mv.stat.exists and not h2_db_legacy.stat.exists
+
+Neste ficheiro é ainda utilizada a função ***ufw***, na criação das regras de *firewall*. Esta cria as regras de *firewall* apenas se as mesmas não existam, de forma *built-in*.
+
+      name: Allow app server access to H2 port
+      ufw:
+        rule: allow
+        proto: tcp
+        from_ip: "{{ app_ip }}"
+        to_port: 9092
+        comment: "Allow app to connect to H2"
+
+Para validarmos se este acontece, basta colocar o código em execução duas vezes e ter em atenção a parte final do *output*, pois este irá revelar quantas tarefas foram executadas, sendo este número ser o mais reduzido possível.
+
+1. **1.ª Execução**
+
+- DB
+
+      PLAY RECAP *********************************************************************
+      db                         : ok=16   changed=12   unreachable=0    failed=0    skipped=1    rescued=0    ignored=0 
+
+- APP 
+
+      PLAY RECAP *********************************************************************
+      app                        : ok=12   changed=4    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0 
+
+2. **2.ª Execução**
+
+- DB
+
+      PLAY RECAP *********************************************************************
+      db                         : ok=14   changed=0    unreachable=0    failed=0    skipped=3    rescued=0    ignored=0
+
+- APP 
+
+      TASK [spring_app : Build Spring Boot application] ******************************
+      changed: [app]
+
+      PLAY RECAP *********************************************************************
+      app                        : ok=12   changed=1    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0 
+
+Como podemos observar a idempotência é alcançada, pois apenas uma função é repetida entre execuções, a construção do *jar*.
 
 ## Issue #53 — Health-check dos serviços
 
@@ -88,6 +171,4 @@ Para garantir que cada serviço está corretamente a correr após o aprovisionam
     - Confirmam via `debug` que a porta está aberta.
 
 Estas verificações falham o playbook se a aplicação web não responder com `200` ou se o socket da BD não abrir, permitindo detetar problemas cedo.
-
-
 
