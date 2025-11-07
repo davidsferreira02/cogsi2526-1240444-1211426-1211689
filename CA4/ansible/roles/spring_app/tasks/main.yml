@@ -1,7 +1,8 @@
 ---
-- name: Update apt cache and install packages for app
+- name: Ensure required packages are installed
   apt:
     update_cache: yes
+    cache_valid_time: 3600
     name:
       - openjdk-17-jdk
       - maven
@@ -16,65 +17,58 @@
     path: "{{ app_project_dir }}/app/src/main/resources/application.properties"
   register: app_props
 
-- name: Configure datasource URL to H2 server
-  lineinfile:
+- name: Configure Spring app datasource and JPA settings
+  blockinfile:
     path: "{{ app_project_dir }}/app/src/main/resources/application.properties"
-    regexp: '^spring.datasource.url='
-    line: "spring.datasource.url=jdbc:h2:tcp://{{ db_ip }}:9092/./payrolldb"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: Datasource and JPA"
     create: yes
-  when: app_props.stat.exists
+    block: |
+      spring.datasource.url=jdbc:h2:tcp://{{ db_ip }}:9092/./payrolldb
+      spring.datasource.driverClassName=org.h2.Driver
+      spring.datasource.username=sa
+      spring.datasource.password=password
+      spring.jpa.hibernate.ddl-auto=update
+  when: app_project_dir is defined
 
-- name: Configure H2 driver
-  lineinfile:
-    path: "{{ app_project_dir }}/app/src/main/resources/application.properties"
-    regexp: '^spring.datasource.driverClassName='
-    line: 'spring.datasource.driverClassName=org.h2.Driver'
-    create: yes
-  when: app_props.stat.exists
-
-- name: Configure DB user
-  lineinfile:
-    path: "{{ app_project_dir }}/app/src/main/resources/application.properties"
-    regexp: '^spring.datasource.username='
-    line: 'spring.datasource.username=sa'
-    create: yes
-  when: app_props.stat.exists
-
-- name: Configure DB password
-  lineinfile:
-    path: "{{ app_project_dir }}/app/src/main/resources/application.properties"
-    regexp: '^spring.datasource.password='
-    line: 'spring.datasource.password=password'
-    create: yes
-  when: app_props.stat.exists
-
-- name: Configure JPA DDL auto update
-  lineinfile:
-    path: "{{ app_project_dir }}/app/src/main/resources/application.properties"
-    regexp: '^spring.jpa.hibernate.ddl-auto='
-    line: 'spring.jpa.hibernate.ddl-auto=update'
-    create: yes
-  when: app_props.stat.exists
-
-- name: Build Spring Boot application (bootJar)
+- name: Build Spring Boot application
   command: ./gradlew bootJar
   args:
     chdir: "{{ app_project_dir }}"
+  register: build_result
+  changed_when: "'BUILD SUCCESSFUL' in build_result.stdout"
+  failed_when:
+    - build_result.rc != 0
+    - "'BUILD FAILED' in build_result.stdout"
+  retries: 2
+  delay: 10
+  until: "'BUILD SUCCESSFUL' in build_result.stdout"
   when: build_app | bool
+  environment:
+    JAVA_HOME: "/usr/lib/jvm/java-17-openjdk-amd64"
 
-- name: Wait for H2 to be ready on DB host
+
+- name: Wait for H2 database to be ready
   wait_for:
     host: "{{ db_ip }}"
     port: 9092
     delay: 1
     timeout: 120
+  register: wait_result
+  failed_when: wait_result is failed and "'timed out' in wait_result.msg"
+  retries: 3
+  delay: 5
+  until: wait_result is succeeded
 
-- name: Find built JARs under the project recursively
+- name: Find built JARs recursively under build/libs
   find:
-    paths: "{{ app_project_dir }}"
+    paths: "{{ app_project_dir }}/app/build/libs"
     patterns: "*.jar"
     recurse: yes
   register: found_jars
+  failed_when: found_jars.matched == 0
+  retries: 2
+  delay: 5
+  until: found_jars.matched > 0
 
 - name: Narrow candidates to app/build/libs
   set_fact:
@@ -93,6 +87,7 @@
           (app_jars_in_libs | sort(attribute='mtime')) | last
         ).path if (app_jars_in_libs | length) > 0 else ''
       }}
+  failed_when: app_jar | length == 0
 
 - name: Fail if no boot jar found
   fail:

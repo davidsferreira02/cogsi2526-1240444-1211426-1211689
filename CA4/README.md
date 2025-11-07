@@ -68,3 +68,25 @@ vagrant ssh db
 ```bash
 vagrant ssh app
 ```
+
+## Issue #49 — Ensure that your playbooks are idempotent
+
+A idempotência, em ***Ansible***, é alcançada através da remoção da necessidade de gastar recursos computacionais em operaçãos que são repetidas sempre que o *provision* das máquinas é realizado. Podemos alcançar o objetivo utilizando funções *built'in*, colocadas nos ficheiros *.yml* com todo o processo de *provision*.
+
+Posto isto, as seguintes alterações foram feitas aos ficheiros *.xml*: 
+
+1. **DB**
+
+- Foi utilizada a função ***state: present*** para garantir que determinados pacotes não são instalados novamente:
+
+      name: Update apt cache and install packages for H2
+      apt:
+        update_cache: yes
+        name:
+          - openjdk-17-jre-headless
+          - ufw
+          - curl
+          - unzip
+        state: present
+  
+- A função ***state: ***
