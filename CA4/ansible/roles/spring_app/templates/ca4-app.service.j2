@@ -3,9 +3,9 @@ Description=CA4 Spring Boot App
 After=network.target
 
 [Service]
-User=vagrant
-WorkingDirectory={{ working_dir }}
-ExecStart=/usr/bin/java -jar {{ app_jar_path }}
+User=devuser
+WorkingDirectory=/opt/developers
+ExecStart=/usr/bin/java -jar /opt/developers/spring-app.jar
 Restart=on-failure
 Environment=JAVA_TOOL_OPTIONS=-XX:+UseG1GC
 

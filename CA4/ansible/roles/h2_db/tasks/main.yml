@@ -1,4 +1,25 @@
 ---
+- name: Ensure developers group exists
+  group:
+    name: developers
+    state: present
+
+- name: Create devuser and add to developers group
+  user:
+    name: devuser
+    groups: developers
+    append: yes
+    shell: /bin/bash
+    password: 6684282bf0c558ae99560ccd9eea5c3ba9d36767132a11a8298bdc6fcb0d368d623fd1305f2c6ac2782a5356d425fc664661c3f9503e7b37c9c2401a05d8130c
+
+- name: Create /opt/developers directory with restricted access
+  file:
+    path: /opt/developers
+    state: directory
+    owner: root
+    group: developers
+    mode: '0750'
+
 - name: Update apt cache and install packages for H2
   apt:
     update_cache: yes
@@ -66,6 +87,19 @@
   file:
     path: /tmp/init_payrolldb.sql
     state: absent
+
+- name: Move H2 database to restricted directory
+  command: mv /data/h2 /opt/developers/h2-db
+  args:
+    creates: /opt/developers/h2-db
+
+- name: Set ownership and permissions for H2 database directory
+  file:
+    path: /opt/developers/h2-db
+    owner: root
+    group: developers
+    mode: '0770'
+    recurse: yes
 
 - name: Install systemd unit for H2
   template:

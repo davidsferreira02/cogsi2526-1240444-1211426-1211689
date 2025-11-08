@@ -1,4 +1,25 @@
 ---
+- name: Ensure developers group exists
+  group:
+    name: developers
+    state: present
+
+- name: Create devuser and add to developers group
+  user:
+    name: devuser
+    groups: developers
+    append: yes
+    shell: /bin/bash
+    password: 6684282bf0c558ae99560ccd9eea5c3ba9d36767132a11a8298bdc6fcb0d368d623fd1305f2c6ac2782a5356d425fc664661c3f9503e7b37c9c2401a05d8130c
+
+- name: Create /opt/developers directory with restricted access
+  file:
+    path: /opt/developers
+    state: directory
+    owner: root
+    group: developers
+    mode: '0750'
+
 - name: Ensure required packages are installed
   apt:
     update_cache: yes
@@ -23,7 +44,7 @@
     marker: "# {mark} ANSIBLE MANAGED BLOCK: Datasource and JPA"
     create: yes
     block: |
-      spring.datasource.url=jdbc:h2:tcp://{{ db_ip }}:9092/./payrolldb
+      spring.datasource.url=jdbc:h2:tcp://{{ db_ip }}:9092//opt/developers/h2-db/payrolldb
       spring.datasource.driverClassName=org.h2.Driver
       spring.datasource.username=sa
       spring.datasource.password=password
@@ -94,14 +115,20 @@
     msg: "No Spring Boot jar found under {{ app_project_dir }}/app/build/libs (looked recursively)."
   when: app_jar | length == 0
 
+- name: Copy Spring Boot JAR to restricted directory
+  copy:
+    src: "{{ app_jar }}"
+    dest: /opt/developers/spring-app.jar
+    owner: root
+    group: developers
+    mode: '0640'
+    remote_src: yes
+
 - name: Install systemd unit for CA4 app
   template:
     src: ca4-app.service.j2
     dest: /etc/systemd/system/ca4-app.service
     mode: '0644'
-  vars:
-    app_jar_path: "{{ app_jar }}"
-    working_dir: "{{ app_project_dir }}"
 
 - name: Reload systemd
   systemd:
