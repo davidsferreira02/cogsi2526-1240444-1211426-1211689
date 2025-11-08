@@ -1,7 +1,6 @@
 ---
 - name: Provision H2 database on host2
   hosts: all
-  connection: local
   gather_facts: yes
   become: true
   vars:

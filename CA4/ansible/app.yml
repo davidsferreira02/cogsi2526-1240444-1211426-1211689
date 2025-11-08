@@ -1,11 +1,11 @@
 ---
 - name: Provision Spring REST app on host1
   hosts: all
-  connection: local
   gather_facts: yes
   become: true
   vars:
-    db_ip: "{{ db_ip | default('192.168.244.171') }}"
+    app_ip: "{{ app_ip | default('192.168.56.172') }}"
+    db_ip: "{{ db_ip | default('192.168.56.171') }}"
     app_project_dir: "{{ app_project_dir | default('/workspace/CA2/Part2') }}"
     build_app: "{{ build_app | default('true') }}"
     start_app: "{{ start_app | default('true') }}"
@@ -16,7 +16,7 @@
   post_tasks:
     - name: Wait for application TCP port to open
       wait_for:
-        host: 127.0.0.1
+        host: "{{ app_ip }}"
         port: "{{ app_port | int }}"
         delay: 2
         timeout: 120
@@ -25,7 +25,7 @@
 
     - name: HTTP health check (root endpoint)
       uri:
-        url: "http://localhost:{{ app_port }}/"
+        url: "http://{{ app_ip }}:{{ app_port }}/"
         method: GET
         status_code: 200
         return_content: yes
