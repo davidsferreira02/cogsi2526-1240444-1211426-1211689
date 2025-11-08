@@ -27,11 +27,10 @@ Vagrant.configure("2") do |config|
     end
 
     # Use Ansible (inside the guest) to provision H2
-    db.vm.provision "ansible_local" do |ansible|
-      ansible.playbook = "db.yml"
-      ansible.become = true
-      ansible.install = true
+    db.vm.provision "ansible" do |ansible|
+      ansible.playbook = "ansible/db.yml"
       ansible.compatibility_mode = "2.0"
+      ansible.become = true
       ansible.extra_vars = {
         app_ip: APP_IP,
         h2_version: ENV.fetch("H2_VERSION", "2.3.232"),
@@ -57,16 +56,17 @@ Vagrant.configure("2") do |config|
     end
 
     # Use Ansible (inside the guest) to provision the Spring app
-    app.vm.provision "ansible_local" do |ansible|
-      ansible.playbook = "app.yml"
-      ansible.become = true
-      ansible.install = true
+    app.vm.provision "ansible" do |ansible|
+      ansible.playbook = "ansible/app.yml"
       ansible.compatibility_mode = "2.0"
+      ansible.become = true
       ansible.extra_vars = {
+        app_ip: APP_IP,
         db_ip: DB_IP,
         app_project_dir: ENV.fetch("APP_PROJECT_DIR", "/workspace/CA2/Part2"),
         build_app: ENV.fetch("BUILD_APP", "true"),
         start_app: ENV.fetch("START_APP", "true"),
+        app_port: ENV.fetch("APP_PORT", "8080"),
       }
     end
   end
