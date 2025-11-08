@@ -237,3 +237,132 @@ Para garantir que cada serviço está corretamente a correr após o aprovisionam
 
 Estas verificações falham o playbook se a aplicação web não responder com `200` ou se o socket da BD não abrir, permitindo detetar problemas cedo.
 
+## Issue #52 — Create developers group and devuser, restrict access to application and database
+
+Para implementar controlo de acesso aos recursos da aplicação e base de dados, foi criado um grupo "developers" e um utilizador "devuser" em ambas as VMs. A aplicação Spring Boot foi colocada no host1 e a base de dados H2 no host2 num diretório acessível apenas aos membros do grupo developers.
+
+### O que foi implementado
+
+- **Ambas as VMs** — `ansible/roles/spring_app/tasks/main.yml` e `ansible/roles/h2_db/tasks/main.yml`
+  - Criado o grupo "developers":
+
+        name: Ensure developers group exists
+        group:
+          name: developers
+          state: present
+
+  - Criado o utilizador "devuser" com password e adicionado ao grupo developers:
+
+        name: Create devuser and add to developers group
+        user:
+          name: devuser
+          groups: developers
+          append: yes
+          shell: /bin/bash
+          password: 6684282bf0c558ae99560ccd9eea5c3ba9d36767132a11a8298bdc6fcb0d368d623fd1305f2c6ac2782a5356d425fc664661c3f9503e7b37c9c2401a05d8130c
+
+- **Host1 (app)** — `ansible/roles/spring_app/tasks/main.yml` e `templates/ca4-app.service.j2`
+  - Criado o diretório `/opt/developers` com permissões restritas (owner: root, group: developers, mode: 0750):
+
+        name: Create /opt/developers directory with restricted access
+        file:
+          path: /opt/developers
+          state: directory
+          owner: root
+          group: developers
+          mode: '0750'
+
+  - Copiado o JAR da aplicação Spring Boot para `/opt/developers/spring-app.jar` com permissões 0640:
+
+        name: Copy Spring Boot JAR to restricted directory
+        copy:
+          src: "{{ app_jar }}"
+          dest: /opt/developers/spring-app.jar
+          owner: root
+          group: developers
+          mode: '0640'
+          remote_src: yes
+
+  - Atualizado o serviço systemd para executar como utilizador "devuser" e usar os novos caminhos:
+
+        [Service]
+        User=devuser
+        WorkingDirectory=/opt/developers
+        ExecStart=/usr/bin/java -jar /opt/developers/spring-app.jar
+
+- **Host2 (db)** — `ansible/roles/h2_db/tasks/main.yml` e `templates/h2.service.j2`
+  - Criado o diretório `/opt/developers` com permissões restritas.
+  - Movida a base de dados H2 de `/data/h2` para `/opt/developers/h2-db` com permissões 0770 (para permitir escrita pelo serviço):
+
+        name: Move H2 database to restricted directory
+        command: mv /data/h2 /opt/developers/h2-db
+        args:
+          creates: /opt/developers/h2-db
+
+        name: Set ownership and permissions for H2 database directory
+        file:
+          path: /opt/developers/h2-db
+          owner: root
+          group: developers
+          mode: '0770'
+          recurse: yes
+
+  - Atualizado o serviço systemd para executar como utilizador "devuser" e usar o novo baseDir:
+
+        [Service]
+        User=devuser
+        ExecStart=/usr/bin/java -cp /opt/h2/h2-{{ h2_version }}.jar org.h2.tools.Server -tcp -tcpAllowOthers -tcpPort 9092 -baseDir /opt/developers/h2-db
+
+### Verificação dos testes realizados
+
+Foram realizados testes para verificar a criação do grupo e utilizador, bem como as permissões de acesso aos diretórios restritos:
+
+- **Verificação da criação do grupo e utilizador**:
+
+  - **VM App (ca4-app)**:
+
+        vagrant@ca4-app:~$ getent group developers
+        developers:x:1001:devuser
+
+  - **VM DB (ca4-db)**:
+
+        vagrant@ca4-db:$ getent group developers
+        developers:x:1001:devuser
+
+- **Testes de acesso negado com utilizador `vagrant`**:
+
+  - **VM App (ca4-app)**:
+
+        vagrant@ca4-app:~$ ls -la /opt/developers
+        ls: cannot open directory '/opt/developers': Permission denied
+
+  - **VM DB (ca4-db)**:
+
+        vagrant@ca4-db:$ ls -la /opt/developers/h2-db
+        ls: cannot access '/opt/developers/h2-db': Permission denied
+        vagrant@ca4-db:$ cat /opt/developers/h2-db/payrolldb
+        cat: /opt/developers/h2-db/payrolldb: Permission denied
+
+- **Testes de acesso permitido com utilizador `devuser` (membro do grupo `developers`)**:
+
+  - **VM App (ca4-app)**:
+
+        vagrant@ca4-app:~$ sudo -su devuser
+        devuser@ca4-app:/home/vagrant$ ls -la /opt/developers
+        total 50060
+        drwxr-x--- 2 root developers     4096 Nov  8 23:17 .
+        drwxr-xr-x 4 root root           4096 Nov  8 23:06 ..
+        -rw-r----- 1 root developers 51250153 Nov  8 20:48 spring-app.jar
+        devuser@ca4-app:/home/vagrant$ exit
+
+  - **VM DB (ca4-db)**:
+
+        vagrant@ca4-db:/$  sudo -su devuser
+        devuser@ca4-db:/$ ls -la  /opt/developers/h2-db
+        total 32
+        drwxrwx--- 2 root developers  4096 Nov  8 22:51 .
+        drwxr-x--- 3 root developers  4096 Nov  8 22:51 ..
+        -rwxrwx--- 1 root developers 24576 Nov  8 23:17 payrolldb.mv.db
+        devuser@ca4-db:/$ exit
+
+Estes testes confirmam que o grupo `developers` e o utilizador `devuser` foram criados corretamente, e que apenas membros do grupo conseguem aceder aos diretórios e ficheiros restritos, garantindo a segurança implementada.
