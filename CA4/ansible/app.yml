@@ -9,9 +9,16 @@
     app_project_dir: "{{ app_project_dir | default('/workspace/CA2/Part2') }}"
     build_app: "{{ build_app | default('true') }}"
     start_app: "{{ start_app | default('true') }}"
-    app_port: "{{ app_port | default('8080') }}"
+    app_port: 8080
+    common_password: /etc/pam.d/common-password
+    common_auth: /etc/pam.d/common-auth
+    password_quality: /etc/security/pwquality.conf
   roles:
     - spring_app
+
+  pre_tasks:
+    - name: Password Security policy
+      import_tasks: securepass.yml 
 
   post_tasks:
     - name: Wait for application TCP port to open

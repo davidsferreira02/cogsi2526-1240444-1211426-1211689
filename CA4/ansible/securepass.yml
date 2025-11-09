@@ -1,0 +1,78 @@
+    - name: Ensure libpam-pwquality is installed
+      package:
+        name: libpam-pwquality
+        state: present
+
+    - name: Ensure pam_pwhistory.so enforces password history (no reuse of last 5)
+      lineinfile:
+        path: "{{ common_password }}"
+        insertafter: '^password\s+\[success=1.*pam_unix\.so'
+        regexp: '^password\s+(required|requisite)\s+pam_pwhistory\.so'
+        line: 'password requisite pam_pwhistory.so remember=5 use_authtok enforce_for_root'
+        state: present
+        backup: yes
+      when: common_password is defined
+
+    - name: Ensure pam_pwquality enforces password complexity rules
+      lineinfile:
+        path: "{{ common_password }}"
+        regexp: '^password\s+requisite\s+pam_pwquality\.so'
+        line: 'password requisite pam_pwquality.so minlen=12 minclass=3 dictcheck=1 usercheck=1 retry=3 enforce_for_root'
+        state: present
+        backup: yes
+      when: common_password is defined
+
+    - name: Ensure pwquality enforces username check (Ubuntu requirement)
+      lineinfile:
+        path: "{{ password_quality }}"
+        regexp: '^usercheck'
+        line: 'usercheck = 1'
+        create: yes
+        backup: yes
+
+    - name: Ensure faillock configuration exists in common-auth
+      blockinfile:
+        path: "{{ common_auth }}"
+        insertbefore: '^auth\s+\[success=1'
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - faillock"
+        block: |
+          auth required pam_faillock.so preauth silent deny=5 unlock_time=600
+          auth [default=die] pam_faillock.so authfail deny=5 unlock_time=600
+          account required pam_faillock.so
+        backup: yes
+      when: common_auth is defined
+
+    - name: Ensure group 'developers' exists
+      group:
+        name: developers
+        state: present
+
+    - name: Ensure user 'cogsi' exists with valid password
+      user:
+        name: cogsi
+        shell: /bin/bash
+        password: "$6$exampleSalt$D7zE2LD2uQ/nS.NekDYh9o0kZ02puDYRdtT2x4nUoeX7tuH1Gf1cAc4t1G2GvDtx2Th/qg.9s.ZCCnF9b44vG/"
+        state: present
+        update_password: on_create
+
+    - name: Ensure 'cogsi' is a member of 'developers'
+      user:
+        name: cogsi
+        groups: developers
+        append: yes
+
+    - name: Ensure 'engineering' directory exists
+      file:
+        path: /opt/engineering
+        state: directory
+        mode: '0750'
+        owner: root
+        group: developers
+
+    - name: Ensure private file exists in 'engineering' directory
+      file:
+        path: /opt/engineering/private.txt
+        state: touch
+        mode: '0770'
+        owner: root
+        group: developers
