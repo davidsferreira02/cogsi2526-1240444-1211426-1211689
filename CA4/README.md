@@ -632,3 +632,238 @@ Posto isto, para o *setup* inicial do projeto foi criada a seguinte árvore de d
 
 7. **Berksfile**  
    - Lista *cookbooks* externos ou dependências a instalar.
+
+### Idempotência
+
+Observando o ficheiro ***pam_policy.rb***:
+
+    pwquality_path = node['ca']['pwquality'] || '/etc/security/pwquality.conf'
+    common_pass    = node['ca']['pam_common_password'] || '/etc/pam.d/common-password'
+    common_auth    = node['ca']['pam_common_auth'] || '/etc/pam.d/common-auth'
+    dev_dir        = node['ca']['dev_dir'] || '/opt/dev'
+    group_name     = node['ca']['group'] || 'developers'
+    user_name      = node['ca']['user'] || 'cogsi'
+
+    # --- Ensure PAM pwquality package is installed ---
+    package 'libpam-pwquality'
+
+    # --- Ensure pam_pwhistory rule exists ---
+    ruby_block 'ensure pam_pwhistory rule' do
+      block do
+        next unless File.exist?(common_pass)
+        text = File.read(common_pass)
+        line = 'password requisite pam_pwhistory.so remember=5 use_authtok enforce_for_root'
+        unless text.include?(line)
+          text.sub!(/^password\s+\[success=1.*pam_unix\.so.*$/) { |m| "#{m}\n#{line}" }
+          File.write(common_pass, text)
+        end
+      end
+    end
+
+    # --- Ensure pam_pwquality rule exists ---
+    ruby_block 'ensure pam_pwquality rule' do
+      block do
+        next unless File.exist?(common_pass)
+        txt  = File.read(common_pass)
+        rule = 'password requisite pam_pwquality.so minlen=12 minclass=3 dictcheck=1 usercheck=1 retry=3 enforce_for_root'
+        if txt =~ /^password\s+requisite\s+pam_pwquality\.so/
+          txt.gsub!(/^password\s+requisite\s+pam_pwquality\.so.*$/, rule)
+        else
+          txt << "\n#{rule}\n"
+        end
+        File.write(common_pass, txt)
+      end
+    end
+
+    # --- Update pwquality.conf ---
+    file pwquality_path do
+      content "usercheck = 1\n"
+      mode '0644'
+      owner 'root'
+      group 'root'
+    end
+
+    # --- Insert faillock configuration ---
+    ruby_block 'insert faillock block in common-auth' do
+      block do
+        next unless File.exist?(common_auth)
+        content = File.read(common_auth)
+        blocktxt = <<~EOT
+          # BEGIN CHEF MANAGED BLOCK - faillock
+          auth required pam_faillock.so preauth silent deny=5 unlock_time=600
+          auth [default=die] pam_faillock.so authfail deny=5 unlock_time=600
+          account required pam_faillock.so
+          # END CHEF MANAGED BLOCK - faillock
+        EOT
+        unless content.include?('CHEF MANAGED BLOCK - faillock')
+          content.sub!(/^auth\s+\[success=1/m, blocktxt + "\n\\0")
+          File.write(common_auth, content)
+        end
+      end
+    end
+
+    # --- Create development group and user ---
+    group group_name do
+      action :create
+    end
+
+    user user_name do
+      manage_home true
+      shell '/bin/bash'
+      password '$6$exampleSalt$D7zE2LD2uQ/nS.NekDYh9o0kZ02puDYRdtT2x4nUoeX7tuH1Gf1cAc4t1G2GvDtx2Th/qg.9s.ZCCnF9b44vG/'
+      action :create
+    end
+
+    # --- Add user to group ---
+    group group_name do
+      members [user_name]
+      append true
+      action :modify
+    end
+
+    # --- Create dev directory ---
+    directory dev_dir do
+      owner 'root'
+      group group_name
+      mode '0750'
+      recursive true
+      action :create
+    end
+
+Podemos observar que foram implementadas medidas de idempotência, podendo mencionar as seguintes:
+
+1. **Funções *built-in Chef***
+   - Usa funções *built'int* como *package*, *file+, *group*, *user* e *directory*, que apenas executam ações caso estas ainda não tenham sido executadas.
+
+2. **Funções condicionais**
+   - Verificações como *next unless File.exist?* e comparações de conteúdo como *unless text.include?* evitam alterações redundantes.
+
+3. **Edição controlada de ficheiros**
+   - Linhas são adicionadas com *sub!* ou *gsub!* prevenindo duplicação de regras PAM.
+
+Posto isto, podemos ver que um certo grau de idempotência é alcançado correndo o programa 2 vezes seguidas:
+
+1. 1.ª Execução
+
+        ==> db: Running handlers:
+        ==> db: [2025-11-09T22:51:01+00:00] INFO: Running report handlers
+        ==> db: Running handlers complete
+        ==> db: [2025-11-09T22:51:01+00:00] INFO: Report handlers complete
+        ==> db: Infra Phase complete, 26/31 resources updated in 56 seconds
+
+
+        ==> app: Running handlers:
+        ==> app: [2025-11-09T22:58:32+00:00] INFO: Running report handlers
+        ==> app: Running handlers complete
+        ==> app: [2025-11-09T22:58:32+00:00] INFO: Report handlers complete
+        ==> app: Infra Phase complete, 23/28 resources updated in 03 minutes 25 seconds
+
+2. 2.ª Execução
+
+        ==> db: Running handlers:
+        ==> db: [2025-11-09T23:28:17+00:00] INFO: Running report handlers
+        ==> db: Running handlers complete
+        ==> db: [2025-11-09T23:28:17+00:00] INFO: Report handlers complete
+        ==> db: Infra Phase complete, 11/30 resources updated in 12 seconds
+
+
+        ==> app: Running handlers:
+        ==> app: [2025-11-09T23:29:00+00:00] INFO: Running report handlers
+        ==> app: Running handlers complete
+        ==> app: [2025-11-09T23:29:00+00:00] INFO: Report handlers complete
+        ==> app: Infra Phase complete, 11/27 resources updated in 24 seconds
+
+Como é possível observar, apesar de o número não ser táo reduzido quanto aquele obtido em ***Ansible***, podemo verificar que o número de tarefas executadas entre execuções reduziu bastante.
+
+### *Password Policy*
+
+Para a implementação de uma política de segurança de *passwords* foram implementados os seguintes métodos no ficheiro ***pam?policy.rb***:
+
+    # --- Ensure PAM pwquality package is installed ---
+    package 'libpam-pwquality'
+
+    # --- Ensure pam_pwhistory rule exists ---
+    ruby_block 'ensure pam_pwhistory rule' do
+      block do
+        next unless File.exist?(common_pass)
+        text = File.read(common_pass)
+        line = 'password requisite pam_pwhistory.so remember=5 use_authtok enforce_for_root'
+        unless text.include?(line)
+          text.sub!(/^password\s+\[success=1.*pam_unix\.so.*$/) { |m| "#{m}\n#{line}" }
+          File.write(common_pass, text)
+        end
+      end
+    end
+
+    # --- Ensure pam_pwquality rule exists ---
+    ruby_block 'ensure pam_pwquality rule' do
+      block do
+        next unless File.exist?(common_pass)
+        txt  = File.read(common_pass)
+        rule = 'password requisite pam_pwquality.so minlen=12 minclass=3 dictcheck=1 usercheck=1 retry=3 enforce_for_root'
+        if txt =~ /^password\s+requisite\s+pam_pwquality\.so/
+          txt.gsub!(/^password\s+requisite\s+pam_pwquality\.so.*$/, rule)
+        else
+          txt << "\n#{rule}\n"
+        end
+        File.write(common_pass, txt)
+      end
+    end
+
+    # --- Update pwquality.conf ---
+    file pwquality_path do
+      content "usercheck = 1\n"
+      mode '0644'
+      owner 'root'
+      group 'root'
+    end
+
+    # --- Insert faillock configuration ---
+    ruby_block 'insert faillock block in common-auth' do
+      block do
+        next unless File.exist?(common_auth)
+        content = File.read(common_auth)
+        blocktxt = <<~EOT
+          # BEGIN CHEF MANAGED BLOCK - faillock
+          auth required pam_faillock.so preauth silent deny=5 unlock_time=600
+          auth [default=die] pam_faillock.so authfail deny=5 unlock_time=600
+          account required pam_faillock.so
+          # END CHEF MANAGED BLOCK - faillock
+        EOT
+        unless content.include?('CHEF MANAGED BLOCK - faillock')
+          content.sub!(/^auth\s+\[success=1/m, blocktxt + "\n\\0")
+          File.write(common_auth, content)
+        end
+      end
+    end
+
+Podemos afirmar o seguinte sobre os mesmos:
+
+1. ***package 'libpam-pwquality'***
+   - Garante a instalação do módulo *pam_pwquality*.
+
+2. ***ruby_block 'ensure pam_pwhistory rule'***
+   - Obriga o sistema a guardar as últimas 5 *passwords* usadas por cada utilizador.
+   - Impede reutilização imediata de palavras-passe antigas.
+
+3. ***ruby_block 'ensure pam_pwquality rule'***
+   - Exige que a password tenha:
+     - Mínimo de 12 caracteres.  
+     - Pelo menos 3 classes (maiúsculas, minúsculas, dígitos, símbolos). 
+     - Verificação contra dicionários e nome do utilizador.  
+     - Aplicação obrigatória mesmo para *root*.
+
+5. ***ruby_block 'insert faillock block in common-auth'***
+   - Implementa política de bloqueio de utilizadores no caso de 5 tentativas de autenticação falhadas.
+
+Para a validação desta implementação foi utilizada a mesma estratégia encontrada no ***Ansible***, que consiste na criação de um utilizador, um grupo e um ficheiro dentro de um diretório apenas acessível a esse grupo.
+
+    vagrant@ca4-db:/opt$ cd dev/
+    -bash: cd: dev/: Permission denied
+    vagrant@ca4-db:/opt$ sudo -iu cogsi
+    cogsi@ca4-db:/$ cd opt/dev/
+    cogsi@ca4-db:/opt/dev$ ls
+    h2-db
+    cogsi@ca4-db:/opt/dev$ 
+
+Como é possível ver, no que toca ao acesso foi bem sucedido.
