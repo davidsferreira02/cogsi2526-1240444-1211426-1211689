@@ -867,3 +867,142 @@ Para a validação desta implementação foi utilizada a mesma estratégia encon
     cogsi@ca4-db:/opt/dev$ 
 
 Como é possível ver, no que toca ao acesso foi bem sucedido.
+
+### Create developers group and devuser, restrict access to application and database
+
+Para replicar a implementação do Issue #52 utilizando Chef em vez de Ansible, foi criado um cookbook `ca_stack` que implementa as mesmas funcionalidades de controlo de acesso aos recursos da aplicação e base de dados. O grupo "developers" e o utilizador "devuser" foram criados em ambas as VMs, com a aplicação Spring Boot no host1 e a base de dados H2 no host2 colocadas num diretório acessível apenas aos membros do grupo developers.
+
+### O que foi implementado
+
+- **Ambas as VMs** — `Chef_Solution/cookbooks/ca_stack/recipes/app.rb` e `Chef_Solution/cookbooks/ca_stack/recipes/h2.rb`
+  - Criado o grupo "developers":
+
+        # Ensure developers group exists
+        group 'developers' do
+          action :create
+        end
+
+  - Criado o utilizador "devuser" com password e adicionado ao grupo developers:
+
+        # Create devuser and add to developers group
+        user 'devuser' do
+          group 'developers'
+          shell '/bin/bash'
+          password '6684282bf0c558ae99560ccd9eea5c3ba9d36767132a11a8298bdc6fcb0d368d623fd1305f2c6ac2782a5356d425fc664661c3f9503e7b37c9c2401a05d8130c'
+          action :create
+        end
+
+- **Host1 (app)** — `Chef_Solution/cookbooks/ca_stack/recipes/app.rb` e `Chef_Solution/cookbooks/ca_stack/templates/ca4-app.service.erb`
+  - Criado o diretório `/opt/developers` com permissões restritas (owner: root, group: developers, mode: 0750):
+
+        # Create /opt/developers directory with restricted access
+        directory node['ca']['dev_dir'] do
+          owner 'root'
+          group 'developers'
+          mode '0750'
+          recursive true
+          action :create
+        end
+
+  - Copiado o JAR da aplicação Spring Boot para `/opt/developers/spring-app.jar` com permissões 0640:
+
+        # Copy JAR to /opt/developers
+        bash 'copy_jar' do
+          code <<~BASH
+            JAR=$(ls -t #{node['ca']['app_project_dir']}/app/build/libs/*.jar | grep -v plain | head -n1)
+            cp "$JAR" #{node['ca']['dev_dir']}/spring-app.jar
+            chown root:developers #{node['ca']['dev_dir']}/spring-app.jar
+            chmod 0640 #{node['ca']['dev_dir']}/spring-app.jar
+          BASH
+        end
+
+  - Atualizado o serviço systemd para executar como utilizador "devuser" e usar os novos caminhos:
+
+        [Service]
+        User=devuser
+        Group=developers
+        ExecStart=/usr/bin/java -jar /opt/developers/spring-app.jar --server.port=<%= @app_port %>
+        Restart=always
+        RestartSec=5
+        Environment=JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+
+- **Host2 (db)** — `Chef_Solution/cookbooks/ca_stack/recipes/h2.rb` e `Chef_Solution/cookbooks/ca_stack/templates/h2.service.erb`
+  - Criado o diretório `/opt/developers` com permissões restritas.
+  - Movida a base de dados H2 de `/data/h2` para `/opt/developers/h2-db` com permissões 0770 (para permitir escrita pelo serviço):
+
+        # --- Initialize database (only once) ---
+        bash 'init_h2_db' do
+          code <<~BASH
+            echo "CREATE TABLE IF NOT EXISTS payroll_init (id INT PRIMARY KEY, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP());" > /tmp/init.sql
+            /usr/bin/java -cp "/opt/h2/h2-#{node['ca']['h2_version']}.jar" org.h2.tools.RunScript \
+              -url "jdbc:h2:/data/h2/payrolldb" -user sa -password password -script /tmp/init.sql
+            rm -f /tmp/init.sql
+            mv /data/h2 #{node['ca']['dev_dir']}/h2-db
+            chown root:developers #{node['ca']['dev_dir']}/h2-db
+            chmod 0770 #{node['ca']['dev_dir']}/h2-db
+          BASH
+          creates "#{node['ca']['dev_dir']}/h2-db"
+        end
+
+  - Atualizado o serviço systemd para executar como utilizador "devuser" e usar o novo baseDir:
+
+        [Service]
+        User=devuser
+        Group=developers
+        ExecStart=/usr/bin/java -cp /opt/h2/h2-<%= @h2_version %>.jar org.h2.tools.Server -tcp -tcpAllowOthers -tcpPort 9092 -baseDir /opt/developers/h2-db
+        Restart=always
+        RestartSec=5
+
+### Verificação dos testes realizados
+
+Foram realizados testes para verificar a criação do grupo e utilizador, bem como as permissões de acesso aos diretórios restritos:
+
+- **Verificação da criação do grupo e utilizador**:
+
+  - **VM App (ca4-app)**:
+
+        vagrant@ca4-app:~$ getent group developers
+        developers:x:1001:devuser
+
+  - **VM DB (ca4-db)**:
+
+        vagrant@ca4-db:$ getent group developers
+        developers:x:1001:devuser
+
+- **Testes de acesso negado com utilizador `vagrant`**:
+
+  - **VM App (ca4-app)**:
+
+        vagrant@ca4-app:~$ ls -la /opt/developers
+        ls: cannot open directory '/opt/developers': Permission denied
+
+  - **VM DB (ca4-db)**:
+
+        vagrant@ca4-db:$ ls -la /opt/developers/h2-db
+        ls: cannot access '/opt/developers/h2-db': Permission denied
+        vagrant@ca4-db:$ cat /opt/developers/h2-db/payrolldb
+        cat: /opt/developers/h2-db/payrolldb: Permission denied
+
+- **Testes de acesso permitido com utilizador `devuser` (membro do grupo `developers`)**:
+
+  - **VM App (ca4-app)**:
+
+        vagrant@ca4-app:~$ sudo -su devuser
+        devuser@ca4-app:/home/vagrant$ ls -la /opt/developers
+        total 50060
+        drwxr-x--- 2 root developers     4096 Nov  8 23:17 .
+        drwxr-xr-x 4 root root           4096 Nov  8 23:06 ..
+        -rw-r----- 1 root developers 51250153 Nov  8 20:48 spring-app.jar
+        devuser@ca4-app:/home/vagrant$ exit
+
+  - **VM DB (ca4-db)**:
+
+        vagrant@ca4-db:/$  sudo -su devuser
+        devuser@ca4-db:/$ ls -la  /opt/developers/h2-db
+        total 32
+        drwxrwx--- 2 root developers  4096 Nov  8 22:51 .
+        drwxr-x--- 3 root developers  4096 Nov  8 22:51 ..
+        -rwxrwx--- 1 root developers 24576 Nov  8 23:17 payrolldb.mv.db
+        devuser@ca4-db:/$ exit
+
+Estes testes confirmam que o grupo `developers` e o utilizador `devuser` foram criados corretamente, e que apenas membros do grupo conseguem aceder aos diretórios e ficheiros restritos, garantindo a segurança implementada.
