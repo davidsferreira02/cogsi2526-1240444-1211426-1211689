@@ -152,6 +152,7 @@ Para validarmos se este acontece, basta colocar o código em execução duas vez
 
 Como podemos observar a idempotência é alcançada, pois apenas uma função é repetida entre execuções, a construção do *jar*.
 
+<<<<<<< HEAD
 ## Issue 51 — Provide hosts.ini (static or the Vagrant auto-inventory path) and show ansible-inventory --list output
 
 Objetivo: disponibilizar um ficheiro de inventário (p.ex. `hosts.ini` estático ou apontar para o inventário gerado automaticamente pelo Vagrant) e mostrar a saída do comando `ansible-inventory --list` para validar o inventário usado pelo Ansible.
@@ -216,6 +217,149 @@ Conclusão:
 
 - O inventário auto-gerado pelo Vagrant está presente no caminho `./.vagrant/provisioners/ansible/inventory/vagrant_ansible_inventory` e contém entradas para as VMs `app` e `db` com as variáveis de conexão necessárias (host/porta/user/key).
 - Caso se prefira um arquivo estático `hosts.ini`, basta criar um ficheiro INI com entradas equivalentes e indicar o caminho para esse ficheiro ao executar o Ansible no Vagrantfile.
+=======
+## Issue #50 — Use Ansible to configure PAM to enforce a complex password policy
+
+Para atribuir ao ***Ansible*** a responsabilidade de configurar uma política de *passwords* segura foi criado um ficheiro *.yml* extra para esta função. Desta maneira, este é possível ser reaproveitado para possíveis novas instâncias e possíveis alterações não afetarão os módulos principais para o provisionamento das máquinas. Posto isto, foram criados os seguintes métodos para:
+
+1. Instalar a biblioteca ***libpam-pwqualioty*** para a definição de políticas de *password*
+
+          name: Install libpam-pwquality
+          package:
+            name: "libpam-pwquality"
+            state: present
+
+2. Configurar os requisitos da *password*, através da alteração dos ficheiros ***common-password***, ***common-auth*** e ***pwquality.conf***. O último é necessário ser editado dado que a máquina utilizada é *Ubuntu*.
+
+
+        name: Ensure pam_pwhistory.so enforces password history (no reuse of last 5)
+        lineinfile:
+          path: "{{ common_password }}"
+          insertafter: '^password\s+\[success=1.*pam_unix\.so'
+          regexp: '^password\s+(required|requisite)\s+pam_pwhistory\.so'
+          line: 'password requisite pam_pwhistory.so remember=5 use_authtok enforce_for_root'
+          state: present
+          backup: yes
+        when: common_password is defined
+
+        name: Ensure pam_pwquality enforces password complexity rules
+        lineinfile:
+          path: "{{ common_password }}"
+          regexp: '^password\s+requisite\s+pam_pwquality\.so'
+          line: 'password requisite pam_pwquality.so minlen=12 minclass=3 dictcheck=1 usercheck=1 retry=3 enforce_for_root'
+          state: present
+          backup: yes
+        when: common_password is defined
+
+        name: Ensure pwquality enforces username check (Ubuntu requirement)
+        lineinfile:
+          path: "{{ password_quality }}"
+          regexp: '^usercheck'
+          line: 'usercheck = 1'
+          create: yes
+          backup: yes
+
+        name: Ensure faillock configuration exists in common-auth
+        blockinfile:
+          path: "{{ common_auth }}"
+          insertbefore: '^auth\s+\[success=1'
+          marker: "# {mark} ANSIBLE MANAGED BLOCK - faillock"
+          block: |
+            auth required pam_faillock.so preauth silent deny=5 unlock_time=600
+            auth [default=die] pam_faillock.so authfail deny=5 unlock_time=600
+            account required pam_faillock.so
+          backup: yes
+        when: common_auth is defined
+
+3. Por fim, tal como ilustrado nos *slides*, foi criado um utilizador, a *password* deste foi gerado usando a biblioteca ***pwgen***, respeitando os requisitos previamente definidos. Para além disso, o utilizador criado foi adicionado a um grupo, um diretório e um ficheiro dentro deste, de forma a testar a criação do utilizador.
+
+          name: Ensure group 'developers' exists
+          group:
+            name: developers
+            state: present
+
+          name: Create the user 'cogsi'
+          user:
+            name: cogsi
+            shell: /bin/bash
+            password: $6$VZ3OJaWEurd4oR1V$6x10uCP9xSfc84wP2N1hI3UE4HUApbX9T.D7UkYYwsSE8bVZPnm07l.5xV5WvgD5/VF1TtXrMds8/RImuYndR.CVAN`'.OTG3=
+          register: user_created
+
+          name: Assign 'cogsi' to the 'developers' group
+          user:
+            name: cogsi
+            groups: developers
+            append: yes
+
+          name: Create a directory named 'engineering'
+          file:
+            path: /opt/engineering
+            state: directory
+            mode: 0750
+            group: developers
+
+          name: Create a file in the engineering directory
+          file:
+            path: "/opt/engineering/private.txt"
+            state: touch
+            mode: 0770
+            group: developers
+
+Passando às validações, em primeiro lugar foi testado o acesso ao ficheiro criado, através do utilizador *default* e com o utilizador criado.
+
+    nacunha@cogsi:~/cogsi2526-1240444-1211426-1211689/CA4/ansible$ vagrant ssh db
+    Welcome to Ubuntu 22.04.5 LTS (GNU/Linux 5.15.0-160-generic x86_64)
+
+     * Documentation:  https://help.ubuntu.com
+     * Management:     https://landscape.canonical.com
+     * Support:        https://ubuntu.com/pro
+
+     System information as of Thu Oct 23 10:31:57 PM UTC 2025
+
+      System load:             1.19
+      Usage of /:              21.3% of 30.34GB
+      Memory usage:            7%
+      Swap usage:              0%
+      Processes:               159
+      Users logged in:         0
+      IPv4 address for enp0s3: 10.0.2.15
+      IPv6 address for enp0s3: fd17:625c:f037:2:a00:27ff:fe16:ddef
+
+
+    This system is built by the Bento project by Chef Software
+    More information can be found at https://github.com/chef/bento
+
+    Use of this system is acceptance of the OS vendor EULA and License Agreements.
+    vagrant@ca4-db:~$ ls -la /opt/engineering
+    ls: cannot open directory '/opt/engineering': Permission denied
+    vagrant@ca4-db:~$ sudo -su cogsi
+    cogsi@ca4-db:/home/vagrant$ ls -la /opt/engineering
+    total 8
+    drwxr-x--- 2 root developers 4096 Nov  8 17:08 .
+    drwxr-xr-x 5 root root       4096 Nov  8 17:08 ..
+    -rwxrwx--- 1 root developers    0 Nov  8 17:29 private.txt
+    cogsi@ca4-db:/home/vagrant$ 
+
+Como é possível observar, apenas o utilizar criado pode aceder ao ficheiro também criado.
+
+    vagrant@ca4-app:~$ sudo passwd cogsi
+    New password: 
+    Retype new password: 
+    passwd: password updated successfully
+    vagrant@ca4-app:~$ 
+    vagrant@ca4-app:~$ 
+    vagrant@ca4-app:~$ 
+    vagrant@ca4-app:~$ sudo passwd cogsi
+    New password: 
+    Retype new password: 
+    Password has been already used. Choose another.
+    passwd: Have exhausted maximum number of retries for service
+    passwd: password unchanged
+    vagrant@ca4-app:~$ 
+
+Como é possível observar a troca de uma palavra passe já utilizada também não é permitida.
+
+>>>>>>> SecurePass
 
 ## Issue #53 — Health-check dos serviços
 
