@@ -14,7 +14,7 @@ end
 include_recipe 'ca_stack::pam_policy'
 
 # --- Install required packages ---
-%w(openjdk-17-jre-headless ufw curl unzip).each do |pkg|
+%w(openjdk-17-jre-headless ufw curl unzip dmidecode netcat-openbsd).each do |pkg|
   package pkg
 end
 
@@ -80,7 +80,7 @@ end
 template '/etc/systemd/system/h2.service' do
   source 'h2.service.erb'
   mode '0644'
-  variables(h2_version: node['ca']['h2_version'])
+  variables(h2_version: node['ca']['h2_version'], h2_port: node['ca']['h2_port'])
   notifies :run, 'execute[daemon-reload]', :immediately
 end
 
@@ -106,32 +106,14 @@ execute 'ufw_allow_ssh' do
 end
 
 execute 'ufw_allow_app' do
-  command "ufw allow from #{node['ca']['app_ip']} to any port 9092 proto tcp"
-  not_if "ufw status | grep -q '#{node['ca']['app_ip']}.*9092/tcp'"
+  command "ufw allow from #{node['ca']['app_ip']} to any port #{node['ca']['h2_port']} proto tcp"
+  not_if "ufw status | grep -q '#{node['ca']['app_ip']}.*#{node['ca']['h2_port']}/tcp'"
 end
 
 # --- Health check: ensure H2 TCP port is accepting connections ---
-ruby_block 'wait_for_h2_port' do
-  block do
-    require 'socket'
-    require 'timeout'
-    deadline = Time.now + 120
-    last_error = nil
-    loop do
-      begin
-        Timeout.timeout(3) do
-          s = TCPSocket.new('127.0.0.1', 9092)
-          s.close
-          break
-        end
-      rescue => e
-        last_error = e
-        if Time.now > deadline
-          raise "H2 port 9092 did not become available: #{last_error.class}: #{last_error.message}"
-        end
-        sleep 2
-      end
-    end
-  end
+execute 'wait_for_h2_tcp_port' do
+  command "bash -lc 'END=$((SECONDS+#{node['ca']['h2_health_timeout']})); while [ $SECONDS -lt $END ]; do nc -z 127.0.0.1 #{node['ca']['h2_port']} && exit 0; sleep 2; done; exit 1'"
+  retries 0
+  timeout node['ca']['h2_health_timeout'].to_i + 10
   only_if { node['ca']['start_db'].to_s == 'true' }
 end
