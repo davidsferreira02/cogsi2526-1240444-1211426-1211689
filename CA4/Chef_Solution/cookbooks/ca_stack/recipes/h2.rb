@@ -109,3 +109,29 @@ execute 'ufw_allow_app' do
   command "ufw allow from #{node['ca']['app_ip']} to any port 9092 proto tcp"
   not_if "ufw status | grep -q '#{node['ca']['app_ip']}.*9092/tcp'"
 end
+
+# --- Health check: ensure H2 TCP port is accepting connections ---
+ruby_block 'wait_for_h2_port' do
+  block do
+    require 'socket'
+    require 'timeout'
+    deadline = Time.now + 120
+    last_error = nil
+    loop do
+      begin
+        Timeout.timeout(3) do
+          s = TCPSocket.new('127.0.0.1', 9092)
+          s.close
+          break
+        end
+      rescue => e
+        last_error = e
+        if Time.now > deadline
+          raise "H2 port 9092 did not become available: #{last_error.class}: #{last_error.message}"
+        end
+        sleep 2
+      end
+    end
+  end
+  only_if { node['ca']['start_db'].to_s == 'true' }
+end

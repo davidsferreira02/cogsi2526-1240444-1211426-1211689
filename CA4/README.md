@@ -378,6 +378,18 @@ Para garantir que cada serviço está corretamente a correr após o aprovisionam
 
 Estas verificações falham o playbook se a aplicação web não responder com `200` ou se o socket da BD não abrir, permitindo detetar problemas cedo.
 
+### Chef (paridade de health-check)
+
+Na solução Chef foi adicionada lógica equivalente para validação pós-provisionamento:
+
+* Receita `app.rb`:
+  * `execute 'wait_for_app_tcp_port'` usa `nc -z` em loop até a porta `app_port` (default 8080) aceitar conexões.
+  * `execute 'http_health_check_app_root'` faz `curl --fail` ao endpoint raiz `http://localhost:<app_port>/` com retries (10 tentativas, atraso 3s) falhando a run se não houver resposta 200.
+* Receita `h2.rb`:
+  * Bloco `ruby_block 'wait_for_h2_port'` tenta abrir um `TCPSocket` para `127.0.0.1:9092` até 120s; lança exceção se indisponível, interrompendo o run.
+
+Isto garante que ambos os serviços (app Spring Boot e H2) estão ativos antes de considerar o provisionamento concluído também no ambiente Chef.
+
 ## Issue #52 — Create developers group and devuser, restrict access to application and database
 
 Para implementar controlo de acesso aos recursos da aplicação e base de dados, foi criado um grupo "developers" e um utilizador "devuser" em ambas as VMs. A aplicação Spring Boot foi colocada no host1 e a base de dados H2 no host2 num diretório acessível apenas aos membros do grupo developers.
