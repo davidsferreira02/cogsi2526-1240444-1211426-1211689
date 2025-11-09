@@ -1,0 +1,14 @@
+[Unit]
+Description=CA4 Spring Boot App
+After=network.target
+
+[Service]
+User=root
+Group=developers
+ExecStart=/usr/bin/java -jar /opt/developers/spring-app.jar --server.port=<%= @app_port %>
+Restart=always
+RestartSec=5
+Environment=JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,18 @@
+# ===== Default CA Stack attributes =====
+
+# PAM-related files
+default['ca']['pam_common_password'] = '/etc/pam.d/common-password'
+default['ca']['pam_common_auth']     = '/etc/pam.d/common-auth'
+default['ca']['pwquality']           = '/etc/security/pwquality.conf'
+
+# User and group configuration
+default['ca']['group'] = 'developers'
+default['ca']['user']  = 'cogsi'
+
+# Application & DB connectivity
+default['ca']['app_project_dir'] = '/workspace/CA2/Part2'
+default['ca']['build_app']       = true
+default['ca']['start_app']       = true
+default['ca']['app_port']        = 8080
+default['ca']['app_ip']          = '192.168.56.11'
+default['ca']['db_ip']           = '192.168.56.10'
