@@ -1,3 +1,10 @@
+#
+# Cookbook:: ca_stack
+# Recipe:: app
+#
+# Builds and deploys the Spring Boot application.
+#
+
 apt_update 'update_packages' do
   action :update
 end
@@ -26,12 +33,17 @@ ruby_block 'write application.properties' do
 end
 
 bash 'build_spring_app' do
-  cwd node['ca']['app_project_dir']  # this should already be /workspace/CA2/Part2
-  code './gradlew :app:bootJar'
-  environment({ 'JAVA_HOME' => '/usr/lib/jvm/java-17-openjdk-amd64' })
+  cwd node['ca']['app_project_dir']
+  code <<~BASH
+    chmod +x ./gradlew
+    ./gradlew bootJar --no-daemon
+  BASH
+  environment({
+    'JAVA_HOME' => '/usr/lib/jvm/java-17-openjdk-amd64',
+    'HOME' => '/home/vagrant'
+  })
   only_if { node['ca']['build_app'] }
 end
-
 
 # Copy JAR to /opt/developers
 bash 'copy_jar' do

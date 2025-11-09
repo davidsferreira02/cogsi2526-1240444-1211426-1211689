@@ -8,14 +8,17 @@ Vagrant.configure("2") do |config|
   # Automatically manage SSH keys
   config.ssh.insert_key = true
 
-  # Mount your workspace (same as in Ansible setup)
-  config.vm.synced_folder "../..", "/workspace"
+  # ============================================================
+  # --- 🔧 Mount your full project root inside /workspace ------
+  # (two levels up from this file)
+  # ============================================================
+  config.vm.synced_folder "../../", "/workspace"
 
-  # Mount your Chef cookbooks into the VM
+  # Mount Chef cookbooks into the VM
   config.vm.synced_folder "./cookbooks", "/var/chef/cookbooks"
 
   # Optionally, always ensure latest Chef client is installed
-  #config.omnibus.chef_version = :latest
+  # config.omnibus.chef_version = :latest
 
   # ============================================================
   # ---------------------- DATABASE VM -------------------------
@@ -40,7 +43,7 @@ Vagrant.configure("2") do |config|
     # --- Chef Solo provisioner ---
     db.vm.provision "chef_solo" do |chef|
       chef.cookbooks_path = ["cookbooks"]
-      chef.run_list = ["recipe[ca_stack::h2]"]   # pam_policy is included internally
+      chef.run_list = ["recipe[ca_stack::h2]"]   # pam_policy included internally
       chef.arguments = "--chef-license accept"
       chef.json = {
         "ca" => {
@@ -76,13 +79,14 @@ Vagrant.configure("2") do |config|
     # --- Chef Solo provisioner ---
     app.vm.provision "chef_solo" do |chef|
       chef.cookbooks_path = ["cookbooks"]
-      chef.run_list = ["recipe[ca_stack::app]"]   # pam_policy is included internally
+      chef.run_list = ["recipe[ca_stack::app]"]   # pam_policy included internally
       chef.arguments = "--chef-license accept"
       chef.json = {
+        # inside app.vm.provision "chef_solo" ... chef.json
         "ca" => {
           "app_ip"          => APP_IP,
           "db_ip"           => DB_IP,
-          "app_project_dir" => ENV.fetch("APP_PROJECT_DIR", "/workspace/CA2/Part2"),
+          "app_project_dir" => "/workspace/cogsi2526-1240444-1211426-1211689/CA2/Part2",
           "build_app"       => ENV.fetch("BUILD_APP", "true"),
           "start_app"       => ENV.fetch("START_APP", "true"),
           "app_port"        => ENV.fetch("APP_PORT", "8080")

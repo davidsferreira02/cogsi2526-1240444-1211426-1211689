@@ -5,13 +5,12 @@
 # Enforces PAM password hardening and creates system user/group and directories.
 #
 
-# --- Load attributes or fallback to defaults ---
 pwquality_path = node['ca']['pwquality'] || '/etc/security/pwquality.conf'
 common_pass    = node['ca']['pam_common_password'] || '/etc/pam.d/common-password'
-common_auth    = node['ca']['pam_common_auth']     || '/etc/pam.d/common-auth'
+common_auth    = node['ca']['pam_common_auth'] || '/etc/pam.d/common-auth'
 dev_dir        = node['ca']['dev_dir'] || '/opt/dev'
-group_name     = node['ca']['group']   || 'developers'
-user_name      = node['ca']['user']    || 'cogsi'
+group_name     = node['ca']['group'] || 'developers'
+user_name      = node['ca']['user'] || 'cogsi'
 
 # --- Ensure PAM pwquality package is installed ---
 package 'libpam-pwquality'
