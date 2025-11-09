@@ -18,7 +18,6 @@ include_recipe 'ca_stack::pam_policy'
   package pkg
 end
 
-# --- Prepare directories ---
 directory '/opt/h2' do
   owner 'root'
   group 'root'
@@ -35,10 +34,24 @@ directory '/data/h2' do
   action :create
 end
 
-directory '/opt/dev' do
+# Ensure developers group exists
+group 'developers' do
+  action :create
+end
+
+# Create devuser and add to developers group
+user 'devuser' do
+  group 'developers'
+  shell '/bin/bash'
+  password '6684282bf0c558ae99560ccd9eea5c3ba9d36767132a11a8298bdc6fcb0d368d623fd1305f2c6ac2782a5356d425fc664661c3f9503e7b37c9c2401a05d8130c'
+  action :create
+end
+
+# Create /opt/developers directory with restricted access
+directory node['ca']['dev_dir'] do
   owner 'root'
-  group node['ca']['group']
-  mode '0770'
+  group 'developers'
+  mode '0750'
   recursive true
   action :create
 end
@@ -56,9 +69,11 @@ bash 'init_h2_db' do
     /usr/bin/java -cp "/opt/h2/h2-#{node['ca']['h2_version']}.jar" org.h2.tools.RunScript \
       -url "jdbc:h2:/data/h2/payrolldb" -user sa -password password -script /tmp/init.sql
     rm -f /tmp/init.sql
-    mv /data/h2 /opt/dev/h2-db
+    mv /data/h2 #{node['ca']['dev_dir']}/h2-db
+    chown root:developers #{node['ca']['dev_dir']}/h2-db
+    chmod 0770 #{node['ca']['dev_dir']}/h2-db
   BASH
-  creates '/opt/dev/h2-db'
+  creates "#{node['ca']['dev_dir']}/h2-db"
 end
 
 # --- Create systemd service file ---

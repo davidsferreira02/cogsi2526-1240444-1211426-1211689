@@ -11,6 +11,28 @@ end
 
 include_recipe 'ca_stack::pam_policy'
 
+# Ensure developers group exists
+group 'developers' do
+  action :create
+end
+
+# Create devuser and add to developers group
+user 'devuser' do
+  group 'developers'
+  shell '/bin/bash'
+  password '6684282bf0c558ae99560ccd9eea5c3ba9d36767132a11a8298bdc6fcb0d368d623fd1305f2c6ac2782a5356d425fc664661c3f9503e7b37c9c2401a05d8130c'
+  action :create
+end
+
+# Create /opt/developers directory with restricted access
+directory node['ca']['dev_dir'] do
+  owner 'root'
+  group 'developers'
+  mode '0750'
+  recursive true
+  action :create
+end
+
 %w(openjdk-17-jdk maven gradle curl jq netcat-openbsd).each do |pkg|
   package pkg
 end

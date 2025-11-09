@@ -3,7 +3,7 @@ Description=CA4 Spring Boot App
 After=network.target
 
 [Service]
-User=root
+User=devuser
 Group=developers
 ExecStart=/usr/bin/java -jar /opt/developers/spring-app.jar --server.port=<%= @app_port %>
 Restart=always

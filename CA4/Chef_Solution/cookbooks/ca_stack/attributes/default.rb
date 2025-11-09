@@ -16,3 +16,4 @@ default['ca']['start_app']       = true
 default['ca']['app_port']        = 8080
 default['ca']['app_ip']          = '192.168.56.11'
 default['ca']['db_ip']           = '192.168.56.10'
+default['ca']['dev_dir']         = '/opt/developers'
