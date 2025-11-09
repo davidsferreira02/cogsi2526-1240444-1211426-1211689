@@ -507,7 +507,62 @@ Para garantir que cada serviço está corretamente a correr após o aprovisionam
     - Confirmam via `debug` que a porta está aberta.
 
 Estas verificações falham o playbook se a aplicação web não responder com `200` ou se o socket da BD não abrir, permitindo detetar problemas cedo.
-<<<<<<< HEAD
 
-=======
->>>>>>> 836591be999dd189832ff086dab0e4846209b2fb
+## Additional Tech
+
+Para tecnologia adicional foi escolhido o ***Chef***, de seguida é apresentada uma breve tabela com as diferenças mais importante entre as duas tecnologias:
+
+| **Aspeto** | **Ansible** | **Chef** |
+|-------------|-------------|-----------|
+| **Linguagem de configuração** | YAML (*playbooks*) | Ruby (*recipes*) |
+| **Arquitetura** | *Agentless* (usa SSH para conectar aos nós) | Requer agente (*Chef Client*) instalado nas máquinas geridas |
+| **Modo de execução** | *Push-based* (o controlo é feito pelo *Ansible Controller*) | *Pull-based* (os nós puxam configurações do servidor *Chef*) |
+| **Facilidade de uso** | Mais simples, sintaxe declarativa e intuitiva | Mais complexo, requer conhecimentos de Ruby |
+| **Gestão de dependências** | Baseia-se em módulos e coleções | Usa *cookbooks* e *Berksfile* para dependências |
+| **Idempotência** | Alta — executa apenas o necessário | Alta — também garante estado desejado |
+
+Posto isto, para o *setup* inicial do projeto foi criada a seguinte árvore de diretórios:
+
+    CA4
+    ├── Ansible_Solution/
+    ├── Chef_Solution/
+    │   ├── cookbooks/
+    │   │   └── ca_stack/
+    │   │       ├── attributes/
+    │   │       │   └── default.rb
+    │   │       ├── recipes/
+    │   │       │   ├── app.rb
+    │   │       │   ├── h2.rb
+    │   │       │   └── pam_policy.rb
+    │   │       ├── templates/
+    │   │       │   ├── ca4-app.service.erb
+    │   │       │   └── h2.service.erb
+    │   │       ├── Berksfile
+    │   │       └── metadata.rb
+    │   └── Vagrantfile
+
+
+2. ***attributes/default.rb***  
+   - Define variáveis globais (IPs, diretórios, versão do H2, portas e flags de execução).  
+
+3. ***recipes/pam_policy.rb***  
+   - Aplica regras de segurança PAM (passwords fortes, bloqueios de autenticação).  
+   - Cria o grupo *developers* e o utilizador cogsi.  
+
+4. ***recipes/h2.rb***  
+   - Ficheiro responsável pela configuração da base de dados.
+
+5. ***recipes/app.rb***  
+   - Ficheiro responsável pela configuração do módulo da *app*.
+
+4. **templates/h2.service.erb**  
+   - Define como o serviço da base de dados é iniciado.
+
+5. **templates/ca4-app.service.erb**  
+   - Define o serviço do ***Spring Boot App***
+
+6. **metadata.rb**  
+   - Define variáveis associadas ao *cookbook*.
+
+7. **Berksfile**  
+   - Lista *cookbooks* externos ou dependências a instalar.
