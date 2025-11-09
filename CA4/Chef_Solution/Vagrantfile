@@ -1,0 +1,97 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+APP_IP = ENV.fetch("APP_IP", "192.168.56.100")
+DB_IP  = ENV.fetch("DB_IP",  "192.168.56.101")
+
+Vagrant.configure("2") do |config|
+  # Automatically manage SSH keys
+  config.ssh.insert_key = true
+
+  # ============================================================
+  # --- 🔧 Mount your full project root inside /workspace ------
+  # (two levels up from this file)
+  # ============================================================
+  config.vm.synced_folder "../../", "/workspace"
+
+  # Mount Chef cookbooks into the VM
+  config.vm.synced_folder "./cookbooks", "/var/chef/cookbooks"
+
+  # Optionally, always ensure latest Chef client is installed
+  # config.omnibus.chef_version = :latest
+
+  # ============================================================
+  # ---------------------- DATABASE VM -------------------------
+  # ============================================================
+  config.vm.define "db" do |db|
+    db.vm.box = "bento/ubuntu-22.04"
+    db.vm.hostname = "ca4-db"
+    db.vm.network "private_network", ip: DB_IP
+
+    # --- VirtualBox provider ---
+    db.vm.provider :virtualbox do |vb|
+      vb.cpus = 1
+      vb.memory = 1024
+    end
+
+    # --- VMware provider (optional) ---
+    db.vm.provider :vmware_desktop do |v|
+      v.vmx["numvcpus"] = "1"
+      v.vmx["memsize"]  = "1024"
+    end
+
+    # --- Chef Solo provisioner ---
+    db.vm.provision "chef_solo" do |chef|
+      chef.cookbooks_path = ["cookbooks"]
+      chef.run_list = ["recipe[ca_stack::h2]"]   # pam_policy included internally
+      chef.arguments = "--chef-license accept"
+      chef.json = {
+        "ca" => {
+          "app_ip"     => APP_IP,
+          "h2_version" => ENV.fetch("H2_VERSION", "2.3.232"),
+          "start_db"   => ENV.fetch("START_DB", "true")
+        }
+      }
+    end
+  end
+
+  # ============================================================
+  # ----------------------- APP VM -----------------------------
+  # ============================================================
+  config.vm.define "app" do |app|
+    app.vm.box = "bento/ubuntu-22.04"
+    app.vm.hostname = "ca4-app"
+    app.vm.network "private_network", ip: APP_IP
+    app.vm.network "forwarded_port", guest: 8080, host: 8080, host_ip: "127.0.0.1"
+
+    # --- VirtualBox provider ---
+    app.vm.provider :virtualbox do |vb|
+      vb.cpus = 2
+      vb.memory = 2048
+    end
+
+    # --- VMware provider (optional) ---
+    app.vm.provider :vmware_desktop do |v|
+      v.vmx["numvcpus"] = "2"
+      v.vmx["memsize"]  = "2048"
+    end
+
+    # --- Chef Solo provisioner ---
+    app.vm.provision "chef_solo" do |chef|
+      chef.cookbooks_path = ["cookbooks"]
+      chef.run_list = ["recipe[ca_stack::app]"]   # pam_policy included internally
+      chef.arguments = "--chef-license accept"
+      chef.json = {
+        # inside app.vm.provision "chef_solo" ... chef.json
+        "ca" => {
+          "app_ip"          => APP_IP,
+          "db_ip"           => DB_IP,
+          "app_project_dir" => "/workspace/cogsi2526-1240444-1211426-1211689/CA2/Part2",
+          "build_app"       => ENV.fetch("BUILD_APP", "true"),
+          "start_app"       => ENV.fetch("START_APP", "true"),
+          "app_port"        => ENV.fetch("APP_PORT", "8080")
+        }
+      }
+    end
+  end
+end

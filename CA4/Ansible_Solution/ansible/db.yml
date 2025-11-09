@@ -1,0 +1,34 @@
+
+- name: Provision H2 database on host2
+  hosts: all
+  gather_facts: yes
+  become: true
+  vars:
+    app_ip: "{{ app_ip | default('192.168.244.172') }}"
+    h2_version: "{{ h2_version | default('2.3.232') }}"
+    start_db: "{{ start_db | default('true') }}"
+    common_password: /etc/pam.d/common-password
+    common_auth: /etc/pam.d/common-auth
+    password_quality: /etc/security/pwquality.conf
+  roles:
+    - h2_db
+
+  pre_tasks:
+    - name: Password Security policy
+      import_tasks: securepass.yml 
+
+
+  post_tasks:
+    - name: Wait for H2 database TCP port to be listening
+      wait_for:
+        host: 127.0.0.1
+        port: 9092
+        delay: 2
+        timeout: 60
+        state: started
+      when: start_db | bool
+    
+    - name: Confirm H2 port 9092 is open
+      debug:
+        msg: "H2 TCP port 9092 is open and accepting connections on localhost"
+      when: start_db | bool
