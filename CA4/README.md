@@ -152,7 +152,6 @@ Para validarmos se este acontece, basta colocar o código em execução duas vez
 
 Como podemos observar a idempotência é alcançada, pois apenas uma função é repetida entre execuções, a construção do *jar*.
 
-<<<<<<< HEAD
 ## Issue 51 — Provide hosts.ini (static or the Vagrant auto-inventory path) and show ansible-inventory --list output
 
 Objetivo: disponibilizar um ficheiro de inventário (p.ex. `hosts.ini` estático ou apontar para o inventário gerado automaticamente pelo Vagrant) e mostrar a saída do comando `ansible-inventory --list` para validar o inventário usado pelo Ansible.
@@ -217,7 +216,6 @@ Conclusão:
 
 - O inventário auto-gerado pelo Vagrant está presente no caminho `./.vagrant/provisioners/ansible/inventory/vagrant_ansible_inventory` e contém entradas para as VMs `app` e `db` com as variáveis de conexão necessárias (host/porta/user/key).
 - Caso se prefira um arquivo estático `hosts.ini`, basta criar um ficheiro INI com entradas equivalentes e indicar o caminho para esse ficheiro ao executar o Ansible no Vagrantfile.
-=======
 ## Issue #50 — Use Ansible to configure PAM to enforce a complex password policy
 
 Para atribuir ao ***Ansible*** a responsabilidade de configurar uma política de *passwords* segura foi criado um ficheiro *.yml* extra para esta função. Desta maneira, este é possível ser reaproveitado para possíveis novas instâncias e possíveis alterações não afetarão os módulos principais para o provisionamento das máquinas. Posto isto, foram criados os seguintes métodos para:
@@ -359,7 +357,6 @@ Como é possível observar, apenas o utilizar criado pode aceder ao ficheiro tam
 
 Como é possível observar a troca de uma palavra passe já utilizada também não é permitida.
 
->>>>>>> SecurePass
 
 ## Issue #53 — Health-check dos serviços
 
