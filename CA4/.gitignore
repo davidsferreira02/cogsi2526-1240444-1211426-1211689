@@ -1,0 +1,3 @@
+# Ignore Vagrant working directories (this folder and any nested ones)
+.vagrant/
+**/.vagrant/
