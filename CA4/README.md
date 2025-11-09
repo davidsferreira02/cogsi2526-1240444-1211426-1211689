@@ -507,4 +507,7 @@ Para garantir que cada serviço está corretamente a correr após o aprovisionam
     - Confirmam via `debug` que a porta está aberta.
 
 Estas verificações falham o playbook se a aplicação web não responder com `200` ou se o socket da BD não abrir, permitindo detetar problemas cedo.
+<<<<<<< HEAD
 
+=======
+>>>>>>> 836591be999dd189832ff086dab0e4846209b2fb
