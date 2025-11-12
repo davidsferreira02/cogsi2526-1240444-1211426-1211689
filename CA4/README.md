@@ -632,3 +632,377 @@ Posto isto, para o *setup* inicial do projeto foi criada a seguinte árvore de d
 
 7. **Berksfile**  
    - Lista *cookbooks* externos ou dependências a instalar.
+
+### Idempotência
+
+Observando o ficheiro ***pam_policy.rb***:
+
+    pwquality_path = node['ca']['pwquality'] || '/etc/security/pwquality.conf'
+    common_pass    = node['ca']['pam_common_password'] || '/etc/pam.d/common-password'
+    common_auth    = node['ca']['pam_common_auth'] || '/etc/pam.d/common-auth'
+    dev_dir        = node['ca']['dev_dir'] || '/opt/dev'
+    group_name     = node['ca']['group'] || 'developers'
+    user_name      = node['ca']['user'] || 'cogsi'
+
+    # --- Ensure PAM pwquality package is installed ---
+    package 'libpam-pwquality'
+
+    # --- Ensure pam_pwhistory rule exists ---
+    ruby_block 'ensure pam_pwhistory rule' do
+      block do
+        next unless File.exist?(common_pass)
+        text = File.read(common_pass)
+        line = 'password requisite pam_pwhistory.so remember=5 use_authtok enforce_for_root'
+        unless text.include?(line)
+          text.sub!(/^password\s+\[success=1.*pam_unix\.so.*$/) { |m| "#{m}\n#{line}" }
+          File.write(common_pass, text)
+        end
+      end
+    end
+
+    # --- Ensure pam_pwquality rule exists ---
+    ruby_block 'ensure pam_pwquality rule' do
+      block do
+        next unless File.exist?(common_pass)
+        txt  = File.read(common_pass)
+        rule = 'password requisite pam_pwquality.so minlen=12 minclass=3 dictcheck=1 usercheck=1 retry=3 enforce_for_root'
+        if txt =~ /^password\s+requisite\s+pam_pwquality\.so/
+          txt.gsub!(/^password\s+requisite\s+pam_pwquality\.so.*$/, rule)
+        else
+          txt << "\n#{rule}\n"
+        end
+        File.write(common_pass, txt)
+      end
+    end
+
+    # --- Update pwquality.conf ---
+    file pwquality_path do
+      content "usercheck = 1\n"
+      mode '0644'
+      owner 'root'
+      group 'root'
+    end
+
+    # --- Insert faillock configuration ---
+    ruby_block 'insert faillock block in common-auth' do
+      block do
+        next unless File.exist?(common_auth)
+        content = File.read(common_auth)
+        blocktxt = <<~EOT
+          # BEGIN CHEF MANAGED BLOCK - faillock
+          auth required pam_faillock.so preauth silent deny=5 unlock_time=600
+          auth [default=die] pam_faillock.so authfail deny=5 unlock_time=600
+          account required pam_faillock.so
+          # END CHEF MANAGED BLOCK - faillock
+        EOT
+        unless content.include?('CHEF MANAGED BLOCK - faillock')
+          content.sub!(/^auth\s+\[success=1/m, blocktxt + "\n\\0")
+          File.write(common_auth, content)
+        end
+      end
+    end
+
+    # --- Create development group and user ---
+    group group_name do
+      action :create
+    end
+
+    user user_name do
+      manage_home true
+      shell '/bin/bash'
+      password '$6$exampleSalt$D7zE2LD2uQ/nS.NekDYh9o0kZ02puDYRdtT2x4nUoeX7tuH1Gf1cAc4t1G2GvDtx2Th/qg.9s.ZCCnF9b44vG/'
+      action :create
+    end
+
+    # --- Add user to group ---
+    group group_name do
+      members [user_name]
+      append true
+      action :modify
+    end
+
+    # --- Create dev directory ---
+    directory dev_dir do
+      owner 'root'
+      group group_name
+      mode '0750'
+      recursive true
+      action :create
+    end
+
+Podemos observar que foram implementadas medidas de idempotência, podendo mencionar as seguintes:
+
+1. **Funções *built-in Chef***
+   - Usa funções *built'int* como *package*, *file+, *group*, *user* e *directory*, que apenas executam ações caso estas ainda não tenham sido executadas.
+
+2. **Funções condicionais**
+   - Verificações como *next unless File.exist?* e comparações de conteúdo como *unless text.include?* evitam alterações redundantes.
+
+3. **Edição controlada de ficheiros**
+   - Linhas são adicionadas com *sub!* ou *gsub!* prevenindo duplicação de regras PAM.
+
+Posto isto, podemos ver que um certo grau de idempotência é alcançado correndo o programa 2 vezes seguidas:
+
+1. 1.ª Execução
+
+        ==> db: Running handlers:
+        ==> db: [2025-11-09T22:51:01+00:00] INFO: Running report handlers
+        ==> db: Running handlers complete
+        ==> db: [2025-11-09T22:51:01+00:00] INFO: Report handlers complete
+        ==> db: Infra Phase complete, 26/31 resources updated in 56 seconds
+
+
+        ==> app: Running handlers:
+        ==> app: [2025-11-09T22:58:32+00:00] INFO: Running report handlers
+        ==> app: Running handlers complete
+        ==> app: [2025-11-09T22:58:32+00:00] INFO: Report handlers complete
+        ==> app: Infra Phase complete, 23/28 resources updated in 03 minutes 25 seconds
+
+2. 2.ª Execução
+
+        ==> db: Running handlers:
+        ==> db: [2025-11-09T23:28:17+00:00] INFO: Running report handlers
+        ==> db: Running handlers complete
+        ==> db: [2025-11-09T23:28:17+00:00] INFO: Report handlers complete
+        ==> db: Infra Phase complete, 11/30 resources updated in 12 seconds
+
+
+        ==> app: Running handlers:
+        ==> app: [2025-11-09T23:29:00+00:00] INFO: Running report handlers
+        ==> app: Running handlers complete
+        ==> app: [2025-11-09T23:29:00+00:00] INFO: Report handlers complete
+        ==> app: Infra Phase complete, 11/27 resources updated in 24 seconds
+
+Como é possível observar, apesar de o número não ser táo reduzido quanto aquele obtido em ***Ansible***, podemo verificar que o número de tarefas executadas entre execuções reduziu bastante.
+
+### *Password Policy*
+
+Para a implementação de uma política de segurança de *passwords* foram implementados os seguintes métodos no ficheiro ***pam?policy.rb***:
+
+    # --- Ensure PAM pwquality package is installed ---
+    package 'libpam-pwquality'
+
+    # --- Ensure pam_pwhistory rule exists ---
+    ruby_block 'ensure pam_pwhistory rule' do
+      block do
+        next unless File.exist?(common_pass)
+        text = File.read(common_pass)
+        line = 'password requisite pam_pwhistory.so remember=5 use_authtok enforce_for_root'
+        unless text.include?(line)
+          text.sub!(/^password\s+\[success=1.*pam_unix\.so.*$/) { |m| "#{m}\n#{line}" }
+          File.write(common_pass, text)
+        end
+      end
+    end
+
+    # --- Ensure pam_pwquality rule exists ---
+    ruby_block 'ensure pam_pwquality rule' do
+      block do
+        next unless File.exist?(common_pass)
+        txt  = File.read(common_pass)
+        rule = 'password requisite pam_pwquality.so minlen=12 minclass=3 dictcheck=1 usercheck=1 retry=3 enforce_for_root'
+        if txt =~ /^password\s+requisite\s+pam_pwquality\.so/
+          txt.gsub!(/^password\s+requisite\s+pam_pwquality\.so.*$/, rule)
+        else
+          txt << "\n#{rule}\n"
+        end
+        File.write(common_pass, txt)
+      end
+    end
+
+    # --- Update pwquality.conf ---
+    file pwquality_path do
+      content "usercheck = 1\n"
+      mode '0644'
+      owner 'root'
+      group 'root'
+    end
+
+    # --- Insert faillock configuration ---
+    ruby_block 'insert faillock block in common-auth' do
+      block do
+        next unless File.exist?(common_auth)
+        content = File.read(common_auth)
+        blocktxt = <<~EOT
+          # BEGIN CHEF MANAGED BLOCK - faillock
+          auth required pam_faillock.so preauth silent deny=5 unlock_time=600
+          auth [default=die] pam_faillock.so authfail deny=5 unlock_time=600
+          account required pam_faillock.so
+          # END CHEF MANAGED BLOCK - faillock
+        EOT
+        unless content.include?('CHEF MANAGED BLOCK - faillock')
+          content.sub!(/^auth\s+\[success=1/m, blocktxt + "\n\\0")
+          File.write(common_auth, content)
+        end
+      end
+    end
+
+Podemos afirmar o seguinte sobre os mesmos:
+
+1. ***package 'libpam-pwquality'***
+   - Garante a instalação do módulo *pam_pwquality*.
+
+2. ***ruby_block 'ensure pam_pwhistory rule'***
+   - Obriga o sistema a guardar as últimas 5 *passwords* usadas por cada utilizador.
+   - Impede reutilização imediata de palavras-passe antigas.
+
+3. ***ruby_block 'ensure pam_pwquality rule'***
+   - Exige que a password tenha:
+     - Mínimo de 12 caracteres.  
+     - Pelo menos 3 classes (maiúsculas, minúsculas, dígitos, símbolos). 
+     - Verificação contra dicionários e nome do utilizador.  
+     - Aplicação obrigatória mesmo para *root*.
+
+5. ***ruby_block 'insert faillock block in common-auth'***
+   - Implementa política de bloqueio de utilizadores no caso de 5 tentativas de autenticação falhadas.
+
+Para a validação desta implementação foi utilizada a mesma estratégia encontrada no ***Ansible***, que consiste na criação de um utilizador, um grupo e um ficheiro dentro de um diretório apenas acessível a esse grupo.
+
+    vagrant@ca4-db:/opt$ cd dev/
+    -bash: cd: dev/: Permission denied
+    vagrant@ca4-db:/opt$ sudo -iu cogsi
+    cogsi@ca4-db:/$ cd opt/dev/
+    cogsi@ca4-db:/opt/dev$ ls
+    h2-db
+    cogsi@ca4-db:/opt/dev$ 
+
+Como é possível ver, no que toca ao acesso foi bem sucedido.
+
+### Create developers group and devuser, restrict access to application and database
+
+Para replicar a implementação do Issue #52 utilizando Chef em vez de Ansible, foi criado um cookbook `ca_stack` que implementa as mesmas funcionalidades de controlo de acesso aos recursos da aplicação e base de dados. O grupo "developers" e o utilizador "devuser" foram criados em ambas as VMs, com a aplicação Spring Boot no host1 e a base de dados H2 no host2 colocadas num diretório acessível apenas aos membros do grupo developers.
+
+### O que foi implementado
+
+- **Ambas as VMs** — `Chef_Solution/cookbooks/ca_stack/recipes/app.rb` e `Chef_Solution/cookbooks/ca_stack/recipes/h2.rb`
+  - Criado o grupo "developers":
+
+        # Ensure developers group exists
+        group 'developers' do
+          action :create
+        end
+
+  - Criado o utilizador "devuser" com password e adicionado ao grupo developers:
+
+        # Create devuser and add to developers group
+        user 'devuser' do
+          group 'developers'
+          shell '/bin/bash'
+          password '6684282bf0c558ae99560ccd9eea5c3ba9d36767132a11a8298bdc6fcb0d368d623fd1305f2c6ac2782a5356d425fc664661c3f9503e7b37c9c2401a05d8130c'
+          action :create
+        end
+
+- **Host1 (app)** — `Chef_Solution/cookbooks/ca_stack/recipes/app.rb` e `Chef_Solution/cookbooks/ca_stack/templates/ca4-app.service.erb`
+  - Criado o diretório `/opt/developers` com permissões restritas (owner: root, group: developers, mode: 0750):
+
+        # Create /opt/developers directory with restricted access
+        directory node['ca']['dev_dir'] do
+          owner 'root'
+          group 'developers'
+          mode '0750'
+          recursive true
+          action :create
+        end
+
+  - Copiado o JAR da aplicação Spring Boot para `/opt/developers/spring-app.jar` com permissões 0640:
+
+        # Copy JAR to /opt/developers
+        bash 'copy_jar' do
+          code <<~BASH
+            JAR=$(ls -t #{node['ca']['app_project_dir']}/app/build/libs/*.jar | grep -v plain | head -n1)
+            cp "$JAR" #{node['ca']['dev_dir']}/spring-app.jar
+            chown root:developers #{node['ca']['dev_dir']}/spring-app.jar
+            chmod 0640 #{node['ca']['dev_dir']}/spring-app.jar
+          BASH
+        end
+
+  - Atualizado o serviço systemd para executar como utilizador "devuser" e usar os novos caminhos:
+
+        [Service]
+        User=devuser
+        Group=developers
+        ExecStart=/usr/bin/java -jar /opt/developers/spring-app.jar --server.port=<%= @app_port %>
+        Restart=always
+        RestartSec=5
+        Environment=JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+
+- **Host2 (db)** — `Chef_Solution/cookbooks/ca_stack/recipes/h2.rb` e `Chef_Solution/cookbooks/ca_stack/templates/h2.service.erb`
+  - Criado o diretório `/opt/developers` com permissões restritas.
+  - Movida a base de dados H2 de `/data/h2` para `/opt/developers/h2-db` com permissões 0770 (para permitir escrita pelo serviço):
+
+        # --- Initialize database (only once) ---
+        bash 'init_h2_db' do
+          code <<~BASH
+            echo "CREATE TABLE IF NOT EXISTS payroll_init (id INT PRIMARY KEY, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP());" > /tmp/init.sql
+            /usr/bin/java -cp "/opt/h2/h2-#{node['ca']['h2_version']}.jar" org.h2.tools.RunScript \
+              -url "jdbc:h2:/data/h2/payrolldb" -user sa -password password -script /tmp/init.sql
+            rm -f /tmp/init.sql
+            mv /data/h2 #{node['ca']['dev_dir']}/h2-db
+            chown root:developers #{node['ca']['dev_dir']}/h2-db
+            chmod 0770 #{node['ca']['dev_dir']}/h2-db
+          BASH
+          creates "#{node['ca']['dev_dir']}/h2-db"
+        end
+
+  - Atualizado o serviço systemd para executar como utilizador "devuser" e usar o novo baseDir:
+
+        [Service]
+        User=devuser
+        Group=developers
+        ExecStart=/usr/bin/java -cp /opt/h2/h2-<%= @h2_version %>.jar org.h2.tools.Server -tcp -tcpAllowOthers -tcpPort 9092 -baseDir /opt/developers/h2-db
+        Restart=always
+        RestartSec=5
+
+### Verificação dos testes realizados
+
+Foram realizados testes para verificar a criação do grupo e utilizador, bem como as permissões de acesso aos diretórios restritos:
+
+- **Verificação da criação do grupo e utilizador**:
+
+  - **VM App (ca4-app)**:
+
+        vagrant@ca4-app:~$ getent group developers
+        developers:x:1001:devuser
+
+  - **VM DB (ca4-db)**:
+
+        vagrant@ca4-db:$ getent group developers
+        developers:x:1001:devuser
+
+- **Testes de acesso negado com utilizador `vagrant`**:
+
+  - **VM App (ca4-app)**:
+
+        vagrant@ca4-app:~$ ls -la /opt/developers
+        ls: cannot open directory '/opt/developers': Permission denied
+
+  - **VM DB (ca4-db)**:
+
+        vagrant@ca4-db:$ ls -la /opt/developers/h2-db
+        ls: cannot access '/opt/developers/h2-db': Permission denied
+        vagrant@ca4-db:$ cat /opt/developers/h2-db/payrolldb
+        cat: /opt/developers/h2-db/payrolldb: Permission denied
+
+- **Testes de acesso permitido com utilizador `devuser` (membro do grupo `developers`)**:
+
+  - **VM App (ca4-app)**:
+
+        vagrant@ca4-app:~$ sudo -su devuser
+        devuser@ca4-app:/home/vagrant$ ls -la /opt/developers
+        total 50060
+        drwxr-x--- 2 root developers     4096 Nov  8 23:17 .
+        drwxr-xr-x 4 root root           4096 Nov  8 23:06 ..
+        -rw-r----- 1 root developers 51250153 Nov  8 20:48 spring-app.jar
+        devuser@ca4-app:/home/vagrant$ exit
+
+  - **VM DB (ca4-db)**:
+
+        vagrant@ca4-db:/$  sudo -su devuser
+        devuser@ca4-db:/$ ls -la  /opt/developers/h2-db
+        total 32
+        drwxrwx--- 2 root developers  4096 Nov  8 22:51 .
+        drwxr-x--- 3 root developers  4096 Nov  8 22:51 ..
+        -rwxrwx--- 1 root developers 24576 Nov  8 23:17 payrolldb.mv.db
+        devuser@ca4-db:/$ exit
+
+Estes testes confirmam que o grupo `developers` e o utilizador `devuser` foram criados corretamente, e que apenas membros do grupo conseguem aceder aos diretórios e ficheiros restritos, garantindo a segurança implementada.
