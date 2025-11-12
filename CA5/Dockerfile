@@ -1,85 +1,94 @@
 
 
-# Spring REST app (Building REST services) 
+######################################################################
+# Version 1: Build inside Docker — support clone-in-container mode     #
+######################################################################
 
-
-FROM eclipse-temurin:17-jdk AS spring-build
-
+# Optional: repo clone stage (only built if referenced via --target)
+FROM eclipse-temurin:17-jdk AS repo
 WORKDIR /src
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends git ca-certificates \
+	&& rm -rf /var/lib/apt/lists/*
 
-# Copy Gradle wrapper and settings from CA2/Part2 (used by CA3/Part2)
-COPY ../CA2/Part2/gradlew ./
-COPY ../CA2/Part2/gradlew.bat ./
-COPY ../CA2/Part2/gradle ./gradle
-COPY ../CA2/Part2/settings.gradle ./
-COPY ../CA2/Part2/gradle.properties ./
-
-# Ensure gradlew is executable
-RUN chmod +x ./gradlew
+# Use BuildKit SSH for private repos (recommended) or make repo public
+# Build with: DOCKER_BUILDKIT=1 docker build --ssh default -f CA5/Dockerfile --target spring-runtime-clone -t spring-payroll:clone .
+ARG REPO_URL=https://github.com/davidsferreira02/cogsi2526-1240444-1211426-1211689.git
+RUN --mount=type=ssh git clone --depth=1 "$REPO_URL" /src/repo
 
 
-RUN ./gradlew --no-daemon tasks > /dev/null || true
+# 1) Build Spring REST app (CA2/Part2/app) using Gradle wrapper inside container
+FROM eclipse-temurin:17-jdk AS spring-build
+WORKDIR /build
 
-# Copy only the app subproject sources and build files
-COPY ../CA2/Part2/app ./app
+# Bring in only the needed sub-tree from the build context for better cache reuse
+COPY CA2/Part2 /build/CA2/Part2
 
-RUN ./gradlew --no-daemon :app:clean :app:bootJar -x test
+WORKDIR /build/CA2/Part2
+RUN chmod +x ./gradlew \
+	&& ./gradlew --no-daemon --version > /dev/null || true \
+	&& ./gradlew --no-daemon :app:clean :app:bootJar -x test
 
+# Collect the generated Boot fat-jar
+RUN set -e; \
+	ls -l app/build/libs; \
+	cp "$(ls -1t app/build/libs/*.jar | grep -v -- '-plain' | head -n1)" /app.jar
+
+# Alternative builder that consumes the cloned repo (for clone-in-container mode)
+FROM eclipse-temurin:17-jdk AS spring-build-clone
+WORKDIR /build
+COPY --from=repo /src/repo/CA2/Part2 /build/CA2/Part2
+WORKDIR /build/CA2/Part2
+RUN chmod +x ./gradlew \
+	&& ./gradlew --no-daemon --version > /dev/null || true \
+	&& ./gradlew --no-daemon :app:clean :app:bootJar -x test
 RUN set -e; \
 	ls -l app/build/libs; \
 	cp "$(ls -1t app/build/libs/*.jar | grep -v -- '-plain' | head -n1)" /app.jar
 
 
-# Chat application (server)  #
-
-
+# 2) Build Chat server (CA2/Part1/gradle_basic_demo-main)
 FROM eclipse-temurin:17-jdk AS chat-build
+WORKDIR /build
 
-WORKDIR /src
+COPY CA2/Part1/gradle_basic_demo-main /build/chat
+WORKDIR /build/chat
+RUN chmod +x ./gradlew \
+	&& ./gradlew --no-daemon --version > /dev/null || true \
+	&& ./gradlew --no-daemon clean jar
 
-
-COPY ../CA2/Part1/gradle_basic_demo-main/gradlew ./
-COPY ../CA2/Part1/gradle_basic_demo-main/gradlew.bat ./
-COPY ../CA2/Part1/gradle_basic_demo-main/gradle ./gradle
-COPY ../CA2/Part1/gradle_basic_demo-main/settings.gradle ./
-COPY ../CA2/Part1/gradle_basic_demo-main/build.gradle ./
-
-
-RUN chmod +x ./gradlew
-RUN ./gradlew --no-daemon tasks > /dev/null || true
-
-
-COPY ../CA2/Part1/gradle_basic_demo-main/src ./src
-RUN ./gradlew --no-daemon clean jar
-
-
+# Collect chat jar for optional runtime image
 RUN ls -l build/libs && cp build/libs/*.jar /chat.jar
 
-# Runtime stage (slim JRE)
-# Runtime stage (Chat server)
+
+# 3a) Runtime image for Chat server (optional target)
 FROM eclipse-temurin:17-jre AS chat-runtime
-
 WORKDIR /app
-
-# Default chat server port
 ENV CHAT_PORT=59001
-
-# Non-root user
 RUN useradd -m appuser
 USER appuser
-
-# Copy jar from chat build stage
 COPY --from=chat-build /chat.jar /app/chat.jar
-
-# Expose chat port
 EXPOSE 59001
-
-# Run Chat server
 ENTRYPOINT ["sh", "-c", "exec java -cp /app/chat.jar basic_demo.ChatServerApp ${CHAT_PORT:-59001}"]
 
-# Runtime stage (Spring app)
-FROM eclipse-temurin:17-jre AS spring-runtime
 
+# 3b) Runtime image for Spring Boot app (default final image)
+FROM eclipse-temurin:17-jre AS spring-runtime-clone
+WORKDIR /app
+ENV SERVER_PORT=8080
+ENV SPRING_DATASOURCE_URL=jdbc:h2:mem:payrolldb;DB_CLOSE_DELAY=-1;MODE=LEGACY
+ENV SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.h2.Driver
+ENV SPRING_DATASOURCE_USERNAME=sa
+ENV SPRING_DATASOURCE_PASSWORD=password
+ENV SPRING_JPA_HIBERNATE_DDL_AUTO=update
+RUN useradd -m appuser
+USER appuser
+COPY --from=spring-build-clone /app.jar /app/app.jar
+EXPOSE 8080
+ENTRYPOINT ["sh", "-c", "exec java -jar /app/app.jar --server.port=${SERVER_PORT:-8080}"]
+
+# Default final image (non-clone path)
+FROM eclipse-temurin:17-jre AS spring-runtime
 WORKDIR /app
 
 # Default server port; Spring Boot respects SERVER_PORT env var
@@ -92,15 +101,12 @@ ENV SPRING_DATASOURCE_USERNAME=sa
 ENV SPRING_DATASOURCE_PASSWORD=password
 ENV SPRING_JPA_HIBERNATE_DDL_AUTO=update
 
-# Non-root user
+# Non-root user for runtime
 RUN useradd -m appuser
 USER appuser
 
-# Copy jar from spring build stage
+# Copy only the built application jar from the builder stage
 COPY --from=spring-build /app.jar /app/app.jar
 
-# Expose HTTP port
 EXPOSE 8080
-
-# Run Spring Boot app; env vars override application.properties
 ENTRYPOINT ["sh", "-c", "exec java -jar /app/app.jar --server.port=${SERVER_PORT:-8080}"]
