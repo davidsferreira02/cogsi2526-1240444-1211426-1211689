@@ -1,0 +1,20 @@
+
+FROM eclipse-temurin:17-jdk
+WORKDIR /app
+
+# Copy project sources
+COPY CA2/Part2/ ./spring-src/
+WORKDIR /app/spring-src
+
+RUN chmod +x ./gradlew \
+    && ./gradlew --no-daemon :app:clean :app:bootJar -x test
+
+# Environment defaults (omit password to avoid secret in image; pass via -e at runtime)
+ENV SERVER_PORT=8080 \
+    SPRING_DATASOURCE_URL=jdbc:h2:mem:payrolldb;DB_CLOSE_DELAY=-1;MODE=LEGACY \
+    SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.h2.Driver \
+    SPRING_DATASOURCE_USERNAME=sa \
+    SPRING_JPA_HIBERNATE_DDL_AUTO=update
+
+EXPOSE 8080
+CMD ["sh", "-c", "exec java -jar $(ls -1 app/build/libs/* | grep -v -- '-plain' | tail -n1) --server.port=${SERVER_PORT:-8080}"]
