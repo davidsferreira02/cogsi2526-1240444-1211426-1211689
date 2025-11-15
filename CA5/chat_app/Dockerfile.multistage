@@ -16,14 +16,14 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 # Default runtime port for the chat server
-ENV CHAT_PORT=8080
+ENV CHAT_PORT=5900
 
 # Copy the built jar from the builder stage
 COPY --from=builder /build/chat/chat.jar /app/chat.jar
 
 # Expose the chat server port
-EXPOSE 8080
+EXPOSE 5900
 
 # Run the server by invoking the main class with the port (uses -cp so no manifest change required)
-ENTRYPOINT ["sh", "-c", "exec java -cp /app/chat.jar basic_demo.ChatServerApp ${CHAT_PORT:-8080}"]
+ENTRYPOINT ["sh", "-c", "exec java -cp /app/chat.jar basic_demo.ChatServerApp ${CHAT_PORT:-5900}"]
 
