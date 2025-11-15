@@ -1,0 +1,29 @@
+# Multi-stage Dockerfile for Chat Server
+# Builder stage: builds the Gradle project using a JDK image
+FROM eclipse-temurin:17-jdk AS builder
+WORKDIR /build/chat
+
+# Copy the chat project from the repository root into the build context in-container
+COPY CA2/Part1/gradle_basic_demo-main/ /build/chat/
+
+# Ensure the Gradle wrapper is executable and build the jar (skip tests for speed)
+RUN chmod +x ./gradlew \
+	&& ./gradlew --no-daemon clean jar -x test \
+	&& cp build/libs/*.jar /build/chat/chat.jar
+
+# Runtime stage: medium-sized JRE image
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+
+# Default runtime port for the chat server
+ENV CHAT_PORT=8080
+
+# Copy the built jar from the builder stage
+COPY --from=builder /build/chat/chat.jar /app/chat.jar
+
+# Expose the chat server port
+EXPOSE 8080
+
+# Run the server by invoking the main class with the port (uses -cp so no manifest change required)
+ENTRYPOINT ["sh", "-c", "exec java -cp /app/chat.jar basic_demo.ChatServerApp ${CHAT_PORT:-8080}"]
+
