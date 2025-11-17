@@ -1,0 +1,17 @@
+
+
+FROM eclipse-temurin:17-jdk
+WORKDIR /app
+
+# Copy only needed project sources (Gradle wrapper, build scripts, src)
+COPY CA2/Part1/gradle_basic_demo-main/ ./chat-src/
+WORKDIR /app/chat-src
+
+RUN chmod +x ./gradlew \
+    && ./gradlew --no-daemon clean jar
+
+ENV CHAT_PORT=59001
+EXPOSE 59001
+
+# Run using produced jar(s). Wildcard expands to the built jar; if multiple, all are on the classpath.
+CMD ["sh", "-c", "exec java -cp build/libs/* basic_demo.ChatServerApp ${CHAT_PORT:-59001}"]

@@ -1,0 +1,11 @@
+
+
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+
+ENV CHAT_PORT=59001
+# Copy host-built JAR(s) into image
+COPY CA2/Part1/gradle_basic_demo-main/build/libs/*.jar ./
+
+EXPOSE 59001
+CMD ["sh", "-c", "exec java -cp /app/* basic_demo.ChatServerApp ${CHAT_PORT:-59001}"]
