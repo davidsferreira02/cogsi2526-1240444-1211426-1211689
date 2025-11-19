@@ -294,8 +294,6 @@ Como é possível observar, apenas o utilizar criado pode aceder ao ficheiro tam
 Como é possível observar a troca de uma palavra passe já utilizada também não é permitida.
 
 ## Issue 51 — Provide hosts.ini (static or the Vagrant auto-inventory path) and show ansible-inventory --list output
-<<<<<<< HEAD
-=======
 
 Objetivo: disponibilizar um ficheiro de inventário (p.ex. `hosts.ini` estático ou apontar para o inventário gerado automaticamente pelo Vagrant) e mostrar a saída do comando `ansible-inventory --list` para validar o inventário usado pelo Ansible.
 
@@ -359,7 +357,6 @@ Conclusão:
 
 - O inventário auto-gerado pelo Vagrant está presente no caminho `./.vagrant/provisioners/ansible/inventory/vagrant_ansible_inventory` e contém entradas para as VMs `app` e `db` com as variáveis de conexão necessárias (host/porta/user/key).
 - Caso se prefira um arquivo estático `hosts.ini`, basta criar um ficheiro INI com entradas equivalentes e indicar o caminho para esse ficheiro ao executar o Ansible no Vagrantfile.
->>>>>>> 8701594c6b48c0b65b5f68537dd649a50f4572ab
 
 Objetivo: disponibilizar um ficheiro de inventário (p.ex. `hosts.ini` estático ou apontar para o inventário gerado automaticamente pelo Vagrant) e mostrar a saída do comando `ansible-inventory --list` para validar o inventário usado pelo Ansible.
 
