@@ -1,0 +1,38 @@
+services:
+  db:
+    image: thomseno/h2:2.2.224
+    ports:
+      - "9092:9092"
+      - "8082:8082"
+    volumes:
+      - h2-data:/opt/h2-data
+    healthcheck:
+      test: ["CMD-SHELL", "curl http://localhost:8082 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - spring-app
+
+  web:
+    build:
+      context: ../..
+      dockerfile: CA5/Part2/Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:h2:tcp://db:9092/./payrolldb
+      - SPRING_DATASOURCE_USERNAME=sa
+      - SPRING_DATASOURCE_PASSWORD=password
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    networks:
+      - spring-app
+
+volumes:
+  h2-data:
+
+networks:
+  spring-net:
