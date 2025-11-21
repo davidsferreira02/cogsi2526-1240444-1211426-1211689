@@ -139,3 +139,76 @@ docker history spring-server
 - Imagens que apenas copiam o JAR (base JRE) são significativamente menores.
 - As camadas de build não existem, tornando a imagem mais simples e leve.
 - Ideal para produção, onde só é necessário o artefacto final.
+
+## Issue #59 - Implement multi-stage build
+
+O objetivo deste issue foi otimizar o processo de criação das imagens Docker utilizando **multi-stage builds**. Esta técnica permite usar uma imagem mais completa (com JDK e ferramentas de build) para compilar a aplicação e uma imagem mais leve (apenas JRE) para a execução final, descartando tudo o que não é necessário para correr a app (código fonte, gradle caches, compiladores, etc.).
+
+### Chat App (`Dockerfile.multistage`)
+
+O Dockerfile para a aplicação de Chat foi dividido em dois estágios:
+
+1. **Builder Stage (`builder`):**
+    - Usa a imagem `eclipse-temurin:17-jdk`.
+    - Copia o código fonte (`CA2/Part1/gradle_basic_demo-main/`).
+    - Compila o projeto usando o Gradle Wrapper (`./gradlew clean jar`).
+2. **Runtime Stage:**
+    - Usa a imagem `eclipse-temurin:17-jre` (mais leve).
+    - Copia apenas o JAR compilado (`chat.jar`) do estágio anterior.
+    - Define o comando de execução.
+
+### Spring App (`Dockerfile.multistage`)
+
+De forma semelhante, a aplicação Spring Boot também utiliza dois estágios:
+
+1. **Builder Stage (`builder`):**
+    - Usa a imagem `eclipse-temurin:17-jdk`.
+    - Copia o código fonte (`CA2/Part2/`).
+    - Compila o projeto gerando um "fat jar" (`./gradlew clean bootJar`).
+2. **Runtime Stage:**
+    - Usa a imagem `eclipse-temurin:17-jre`.
+    - Define as variáveis de ambiente necessárias (Base de dados H2, portas, etc.).
+    - Copia o JAR (`app.jar`) do estágio de build.
+    - Executa a aplicação.
+
+### Como usar
+
+**Construir as imagens:**
+
+```sh
+docker build -f CA5/chat_app/Dockerfile.multistage -t chat-server:multistage .
+docker build -f CA5/spring_app/Dockerfile.multistage -t spring-server:multistage .
+```
+
+**Correr os contentores:**
+
+```sh
+docker run -p 59001:5900 chat-server:multistage
+docker run -p 8080:8080 spring-server:multistage
+```
+
+### Comparação de Eficiência
+
+A utilização de multi-stage builds resulta numa redução significativa do tamanho da imagem final, pois removemos o código fonte, o Gradle e o JDK completo da imagem de produção.
+
+Para verificar os tamanhos e comparar com as versões anteriores, utilizamos o comando:
+
+```sh
+docker images
+```
+
+**Tabela de Comparação (Preencher com os valores obtidos):**
+
+| Aplicação | Versão | Tag | Tamanho (MB) | Observações |
+| :--- | :--- | :--- | :--- | :--- |
+| Chat | Build no Docker (v1) | `chat-server:v1` | 579MB | Inclui JDK e código fonte |
+| Chat | Build no Docker (v2) | `chat-server:v2` | 265MB | Apenas JRE e JAR compilado |
+| Chat | Multi-stage (v3) | `chat-server:multistage` | 265MB | Apenas JRE e JAR compilado |
+| Spring | Build no Docker (v1) | `spring-server:v1` | 792MB | Inclui JDK e código fonte |
+| Spring | Build no Docker (v2) | `spring-server:v2` | 314MB | Apenas JRE e JAR compilado |
+| Spring | Multi-stage (v3) | `spring-server:multistage` | 314MB | Apenas JRE e JAR compilado |
+
+#### Conclusão
+
+As imagens `multistage` resultam em imagens significativamente menores que as versões `v1`, tendo exatamente o mesmo tamanho das versões `v2`. Isto acontece porque as imagens `multistage`, tal como as versões `v2`, não incluem o código fonte, o Gradle e o JDK completo da imagem de produção, como as versões `v1`.
+Para além disso, as imagens `multistage` são mais eficientes em termos de construção, já que o build é feito dentro do container, eliminando a necessidade de construir o artefacto manualmente no host.
