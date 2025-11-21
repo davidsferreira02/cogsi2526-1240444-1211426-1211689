@@ -1,0 +1,33 @@
+# Multi-stage Dockerfile for Spring Boot application (Part2)
+# Builder stage: build with Eclipse Temurin JDK 17 and Gradle wrapper
+FROM eclipse-temurin:17-jdk AS builder
+WORKDIR /workspace/app
+
+# Copy application sources from repository root into image
+COPY CA2/Part2/ /workspace/app/
+
+# Ensure the Gradle wrapper is executable and build the Spring Boot jar
+RUN chmod +x ./gradlew \
+	&& ./gradlew --no-daemon clean bootJar
+
+# Runtime stage: Eclipse Temurin JRE 17 (medium size)
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+
+# Runtime port used by the Spring Boot app
+ENV PORT=8080
+EXPOSE 8080
+
+ENV SERVER_PORT=8080
+ENV SPRING_DATASOURCE_URL=jdbc:h2:mem:payrolldb;DB_CLOSE_DELAY=-1;MODE=LEGACY
+ENV SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.h2.Driver
+ENV SPRING_DATASOURCE_USERNAME=sa
+ENV SPRING_DATASOURCE_PASSWORD=password
+ENV SPRING_JPA_HIBERNATE_DDL_AUTO=update
+
+# Copy the fat jar produced by the build stage. Adjust glob if needed.
+COPY --from=builder /workspace/app/app/build/libs/*.jar /app/app.jar
+
+# Run the Spring Boot application
+ENTRYPOINT ["sh", "-c", "exec java -jar /app/app.jar"]
+
