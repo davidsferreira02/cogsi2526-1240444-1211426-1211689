@@ -212,3 +212,42 @@ docker images
 
 As imagens `multistage` resultam em imagens significativamente menores que as versões `v1`, tendo exatamente o mesmo tamanho das versões `v2`. Isto acontece porque as imagens `multistage`, tal como as versões `v2`, não incluem o código fonte, o Gradle e o JDK completo da imagem de produção, como as versões `v1`.
 Para além disso, as imagens `multistage` são mais eficientes em termos de construção, já que o build é feito dentro do container, eliminando a necessidade de construir o artefacto manualmente no host.
+
+## Issue #60 - Monitor resource usage
+
+O objetivo deste issue foi monitorizar em tempo real a utilização de CPU, memória, rede e I/O de disco dos containers em execução e registar as observações obtidas.
+
+### Como usar
+
+```sh
+# Iniciar os containers (assumindo que as imagens foram construídas previamente)
+docker run --rm -p 5900:5900 --name chat-app chat-server:multistage
+docker run --rm -p 8080:8080 --name spring-app spring-server:multistage
+
+# Monitorizar o uso de recursos dos containers
+docker stats
+```
+
+### Observações
+
+Parte do output observado com `docker stats` (capturado enquanto ambos os containers estavam em execução):
+
+```
+CONTAINER ID   NAME         CPU %     MEM USAGE / LIMIT    MEM %     NET I/O          BLOCK I/O        PIDS
+5bca1ad6e42d   chat-app     0.19%     49.44MiB / 7.44GiB   0.65%     1.15kB / 318B    4.98MB / 193kB   20
+8069f1c63b23   spring-app   0.18%     367.5MiB / 7.44GiB   4.82%     9.31kB / 4.6kB   89.2MB / 352kB   51
+```
+
+### Análise de Recursos
+
+A monitorização em tempo real revelou as seguintes características de utilização de recursos para cada aplicação:
+
+-   **CPU**: A utilização de CPU variou pouco durante a observação.
+    -   `chat-app`: ~0.15%–0.20% (picos ocasionais próximos de 0.25%).
+    -   `spring-app`: ~0.20%–0.25%, com picos entre 2% e 3% quando a aplicação recebeu pedidos.
+-   **Memória**: A `spring-app` apresentou uma utilização de memória significativamente superior à `chat-app` (ex.: 367.5MiB vs 49.44MiB no exemplo mostrado).
+-   **Rede / I/O**: Os valores de rede e block I/O mantiveram-se baixos e estáveis. O `spring-app` registou maiores valores absolutos de block I/O no período observado.
+
+### Conclusão
+
+As medições foram efetuadas em tempo real via `docker stats` no terminal e não foram persistidas em ficheiro. A `spring-app` demonstrou ser mais intensiva em termos de memória e teve picos de CPU mais elevados sob carga, quando comparada com a `chat-app`, que manteve um consumo de recursos mais estável e baixo.
