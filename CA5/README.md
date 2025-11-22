@@ -251,3 +251,86 @@ A monitorização em tempo real revelou as seguintes características de utiliza
 ### Conclusão
 
 As medições foram efetuadas em tempo real via `docker stats` no terminal e não foram persistidas em ficheiro. A `spring-app` demonstrou ser mais intensiva em termos de memória e teve picos de CPU mais elevados sob carga, quando comparada com a `chat-app`, que manteve um consumo de recursos mais estável e baixo.
+
+## Issue #61 - Tag and publish images
+
+O objetivo deste issue foi taggar e publicar as imagens Docker criadas no repositório DockerHub.
+
+### Chat App
+
+```sh
+docker tag chat-server-v1:v1 rafaelgomes03/chat-server-v1:v1
+docker tag chat-server-v2:v2 rafaelgomes03/chat-server-v2:v2
+docker tag chat-server-multistage:multistage rafaelgomes03/chat-server-multistage:multistage
+docker push rafaelgomes03/chat-server-v1:v1
+docker push rafaelgomes03/chat-server-v2:v2
+docker push rafaelgomes03/chat-server-multistage:multistage
+```
+
+### Spring App
+
+```sh
+docker tag spring-server-v1:v1 rafaelgomes03/spring-server-v1:v1
+docker tag spring-server-v2:v2 rafaelgomes03/spring-server-v2:v2
+docker tag spring-server-multistage:multistage rafaelgomes03/spring-server-multistage:multistage
+docker push rafaelgomes03/spring-server-v1:v1
+docker push rafaelgomes03/spring-server-v2:v2
+docker push rafaelgomes03/spring-server-multistage:multistage
+```
+
+### Explicação dos comandos
+
+-   `docker tag`: Adiciona uma tag (nome) à imagem Docker. É necessário incluir o nome do repositório DockerHub no início do nome da tag para que a imagem seja publicada no repositório.
+-   `docker push`: Envia a imagem Docker para o repositório DockerHub.
+
+### Excerto do comando `docker images`
+
+```sh
+REPOSITORY                               TAG          IMAGE ID       CREATED             SIZE
+chat-server-multistage                   multistage   4141d90c78fd   13 minutes ago      265MB
+rafaelgomes03/chat-server-multistage     multistage   4141d90c78fd   13 minutes ago      265MB
+chat-server-v1                           v1           7782bf4710ec   16 minutes ago      588MB
+rafaelgomes03/chat-server-v1             v1           7782bf4710ec   16 minutes ago      588MB
+chat-server-v2                           v2           5672a258323d   About an hour ago   265MB
+rafaelgomes03/chat-server-v2             v2           5672a258323d   About an hour ago   265MB
+spring-server-v2                         v2           2449f35bdab5   About an hour ago   314MB
+rafaelgomes03/spring-server-v2           v2           2449f35bdab5   About an hour ago   314MB
+spring-server-v1                         v1           04a691aa3d17   3 hours ago         792MB
+rafaelgomes03/spring-server-v1           v1           04a691aa3d17   3 hours ago         792MB
+rafaelgomes03/spring-server-multistage   multistage   9eb6e83e42b2   3 hours ago         314MB
+spring-server-multistage                 multistage   9eb6e83e42b2   3 hours ago         314MB
+```
+
+### Exemplo do comando docker push
+
+```sh
+The push refers to repository [docker.io/rafaelgomes03/chat-server-v1]
+89bba4cfd1e3: Pushed
+5f70bf18a086: Mounted from oscarfonts/h2
+5bb192cb7a8b: Pushed
+cfe5fa2c84a9: Pushed
+db1688142012: Mounted from library/eclipse-temurin
+d03939930dac: Mounted from library/eclipse-temurin
+35c0b8fb11b1: Mounted from library/eclipse-temurin
+d7ef4463791e: Mounted from library/eclipse-temurin
+e8bce0aabd68: Mounted from library/eclipse-temurin
+v1: digest: sha256:ac0c6298f15faf1dec223899ba42b389ae0909414d458eafd6af26f0c80e0dca size: 2204
+```
+
+### Conteúdo do repositório DockerHub
+
+```sh
+docker search rafaelgomes03
+                                      
+NAME                                     DESCRIPTION   STARS     OFFICIAL
+rafaelgomes03/spring-server                            0
+rafaelgomes03/welcome-to-docker                        0
+rafaelgomes03/chat-server                              0
+rafaelgomes03/chat-server-v2                           0
+rafaelgomes03/spring-server-multistage                 0
+rafaelgomes03/spring-server-v1                         0
+rafaelgomes03/chat-server-multistage                   0
+rafaelgomes03/chat-server-v1                           0
+rafaelgomes03/spring-server-v2                         0
+
+```
