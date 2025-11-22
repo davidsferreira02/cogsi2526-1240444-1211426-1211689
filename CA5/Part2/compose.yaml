@@ -2,37 +2,37 @@ services:
   db:
     image: thomseno/h2:2.2.224
     ports:
-      - "9092:9092"
-      - "8082:8082"
+      - "${DB_TCP_PORT}:9092"
+      - "${DB_CONSOLE_PORT}:8082"
     volumes:
-      - h2-data:/opt/h2-data
+      - ${VOLUME_NAME}:/opt/h2-data
     healthcheck:
-      test: ["CMD-SHELL", "curl http://localhost:8082 || exit 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      test: ["CMD-SHELL", "curl http://localhost:${DB_CONSOLE_PORT} || exit 1"]
+      interval: ${DB_HEALTHCHECK_INTERVAL}
+      timeout: ${DB_HEALTHCHECK_TIMEOUT}
+      retries: ${DB_HEALTHCHECK_RETRIES}
     networks:
-      - spring-app
+      - ${NETWORK_NAME}
 
   web:
     build:
-      context: ../..
-      dockerfile: CA5/Part2/Dockerfile
+      context: ${WEB_BUILD_CONTEXT}
+      dockerfile: ${WEB_DOCKERFILE_PATH}
     ports:
-      - "8080:8080"
+      - "${WEB_PORT}:8080"
     depends_on:
       db:
         condition: service_healthy
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:h2:tcp://db:9092/./payrolldb
-      - SPRING_DATASOURCE_USERNAME=sa
-      - SPRING_DATASOURCE_PASSWORD=password
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      SPRING_DATASOURCE_URL: jdbc:h2:tcp://${DB_HOST}:${DB_TCP_PORT}/./${DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_DDL_AUTO}
     networks:
-      - spring-app
+      - ${NETWORK_NAME}
 
 volumes:
   h2-data:
 
 networks:
-  spring-net:
+  spring-app:
